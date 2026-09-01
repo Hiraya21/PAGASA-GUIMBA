@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { HeroSection } from './HeroSection';
 import { 
   Users, 
@@ -136,14 +137,20 @@ export const PublicHomePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="lg:col-span-4 bg-gradient-to-br from-blue-900 to-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4">
-              <h3 className="font-bold text-base text-yellow-300">Core Mission</h3>
+            <div className="lg:col-span-4 bg-gradient-to-br from-blue-950 via-slate-900 to-sky-950 text-white p-6 sm:p-7 rounded-2xl shadow-xl space-y-4 border border-sky-500/20 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3">
+                <PagasaLogo size={56} showText={false} className="flex-shrink-0" />
+                <div>
+                  <h3 className="font-bold text-base text-yellow-300 font-display tracking-tight">Core Mission</h3>
+                  <p className="text-[10px] text-sky-300 uppercase tracking-widest font-semibold">Inspire • Learn • Lead</p>
+                </div>
+              </div>
               <p className="text-xs text-slate-300 leading-relaxed">
                 To equip Guimba's youth with leadership capabilities, moral integrity, practical skillsets, and meaningful civic opportunities, nurturing them as proactive architects of our town's future.
               </p>
               <button
                 onClick={() => setCurrentPage('about')}
-                className="text-xs font-bold text-sky-300 hover:text-white flex items-center gap-1.5 transition-colors"
+                className="text-xs font-bold text-sky-300 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 transition-colors cursor-pointer w-full sm:w-auto pt-1"
               >
                 <span>Read Full Vision & History</span>
                 <ChevronRight className="w-4 h-4" />

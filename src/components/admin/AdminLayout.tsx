@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, ActivePage } from '../../context/AppContext';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { 
   LayoutDashboard, 
   Users, 
@@ -62,8 +63,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="p-4 sm:p-6 space-y-6">
           {/* Brand header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 flex-shrink-0">
-              <ShieldCheck className="w-6 h-6 text-yellow-300" />
+            <div className="flex-shrink-0">
+              <PagasaLogo size={42} showText={false} />
             </div>
             <div className="min-w-0">
               <h2 className="text-white font-bold text-sm tracking-tight font-display truncate">

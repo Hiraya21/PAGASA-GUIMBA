@@ -1,34 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  /* Core Theme Tokens - Light Mode */
+  /* Core Theme Tokens - Official PAGASA Guimba Brand Palette */
   --bg-page: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #ffffff;
-  --bg-surface-hover: #f1f5f9;
+  --bg-surface-hover: #f0f9ff;
   --bg-muted: #f1f5f9;
   --bg-card: #ffffff;
   --bg-input: #f8fafc;
   --border-subtle: #e2e8f0;
   --border-medium: #cbd5e1;
   --border-strong: #94a3b8;
-  --text-main: #0f172a;
+  --text-main: #0f1e3d;
   --text-muted: #64748b;
   --text-subtle: #94a3b8;
   --text-inverse: #ffffff;
 
-  /* Primary Palette (Civic Blue Default) */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #eff6ff;
-  --primary-border: #bfdbfe;
-  --primary-text: #1d4ed8;
-  --primary-ring: rgba(37, 99, 235, 0.35);
+  /* Official Brand Colors from Seal Logo */
+  --brand-sky-blue: #3bb4f2;
+  --brand-navy: #1a2b4c;
+  --brand-green: #16a34a;
+  --brand-ivory: #fffdf7;
+
+  /* Primary Palette (Sky Civic Blue) */
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-light: #f0f9ff;
+  --primary-border: #bae6fd;
+  --primary-text: #0284c7;
+  --primary-ring: rgba(2, 132, 199, 0.35);
 
   --accent-gold: #d97706;
   --accent-gold-bg: #fffbeb;
-  --accent-emerald: #059669;
-  --accent-emerald-bg: #ecfdf5;
+  --accent-emerald: #16a34a;
+  --accent-emerald-bg: #f0fdf4;
 
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);

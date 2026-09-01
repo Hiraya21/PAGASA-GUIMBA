@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, ActivePage } from '../../context/AppContext';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { 
   LayoutDashboard, 
   QrCode, 
@@ -95,12 +96,12 @@ export const MemberLayout: React.FC<MemberLayoutProps> = ({ children }) => {
             {isMobileDrawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 to-sky-500 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-              PG
+            <div className="flex-shrink-0">
+              <PagasaLogo size={32} showText={false} />
             </div>
             <div>
               <p className="font-display font-extrabold text-xs text-slate-900 leading-tight">PAGASA GUIMBA</p>
-              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Member Portal</p>
+              <p className="text-[10px] text-sky-600 font-bold uppercase tracking-wider">Member Portal</p>
             </div>
           </div>
         </div>
@@ -145,15 +146,15 @@ export const MemberLayout: React.FC<MemberLayoutProps> = ({ children }) => {
           {/* Header Brand */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-600/20">
-                <ShieldCheck className="w-6 h-6 text-yellow-300" />
+              <div className="flex-shrink-0">
+                <PagasaLogo size={42} showText={false} />
               </div>
               <div>
                 <h2 className="font-bold text-sm text-slate-900 font-display tracking-tight">
                   {settings.acronym || 'PAGASA'} GUIMBA
                 </h2>
-                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-blue-500" />
+                <span className="text-[10px] text-sky-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-sky-500" />
                   Youth Member Portal
                 </span>
               </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, ActivePage } from '../../context/AppContext';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { 
   Shield, 
   Search, 
@@ -97,20 +98,20 @@ export const Navbar: React.FC = () => {
             onClick={() => setCurrentPage('home')}
             className="flex items-center gap-3 cursor-pointer group flex-shrink-0"
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-blue-900 via-blue-700 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-900/20 group-hover:scale-105 transition-transform flex-shrink-0">
-              <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-300 stroke-[2.2]" />
+            <div className="group-hover:scale-105 transition-transform flex-shrink-0">
+              <PagasaLogo size={46} showText={false} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-display font-black text-slate-950 text-base sm:text-lg tracking-tight group-hover:text-blue-700 transition-colors whitespace-nowrap">
+                <span className="font-display font-black text-slate-950 text-base sm:text-lg tracking-tight group-hover:text-sky-600 transition-colors whitespace-nowrap">
                   PAGASA GUIMBA
                 </span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full hidden sm:inline-block flex-shrink-0">
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-sky-100 text-sky-800 border border-sky-200 rounded-full hidden sm:inline-block flex-shrink-0">
                   MIS
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium hidden sm:block truncate">
-                Youth Organization • Kabataan. Pagkakaisa. Pag-asa.
+                Youth Organization • Inspire. Learn. Lead.
               </p>
             </div>
           </div>

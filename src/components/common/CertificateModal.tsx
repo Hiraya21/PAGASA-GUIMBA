@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { CertificateItem } from '../../types';
+import { PagasaLogo } from './PagasaLogo';
 import { X, Printer, Download, Award, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -54,7 +55,8 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({ certificate,
             <div className="absolute bottom-2 right-2 w-8 h-8 border-b-2 border-r-2 border-blue-900" />
 
             {/* Header / Seal */}
-            <div className="space-y-1 mb-6">
+            <div className="flex flex-col items-center space-y-2 mb-6">
+              <PagasaLogo size={64} showText={false} />
               <p className="text-xs tracking-widest font-semibold uppercase text-slate-600">
                 Republic of the Philippines • Municipality of Guimba, Nueva Ecija
               </p>

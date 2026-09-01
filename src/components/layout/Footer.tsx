@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { Shield, Mail, Phone, MapPin, Facebook, Instagram, Youtube, Heart, ExternalLink } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -13,8 +14,8 @@ export const Footer: React.FC = () => {
           {/* Col 1 & 2: Branding */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-900 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-blue-900/30">
-                <Shield className="w-6 h-6 text-yellow-300" />
+              <div className="flex-shrink-0">
+                <PagasaLogo size={52} showText={false} />
               </div>
               <div>
                 <h3 className="text-white font-display font-bold text-base tracking-tight">

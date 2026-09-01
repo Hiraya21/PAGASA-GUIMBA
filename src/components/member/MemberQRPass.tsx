@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { Shield, Printer, Download, ArrowLeft, CheckCircle2, QrCode, Sparkles, MapPin } from 'lucide-react';
 
 export const MemberQRPass: React.FC = () => {
@@ -69,14 +70,14 @@ export const MemberQRPass: React.FC = () => {
         <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200 text-center relative">
           
           {/* Card Header Top Graphic */}
-          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-sky-900 p-6 text-white relative">
+          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-sky-950 p-6 text-white relative">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Shield className="w-6 h-6 text-yellow-300" />
-              <span className="font-display font-extrabold text-sm uppercase tracking-wider">
+              <PagasaLogo size={36} showText={false} />
+              <span className="font-display font-extrabold text-sm uppercase tracking-wider text-white">
                 {settings.orgName}
               </span>
             </div>
-            <p className="text-[10px] text-sky-200 uppercase tracking-widest font-semibold">
+            <p className="text-[10px] text-sky-300 uppercase tracking-widest font-bold">
               OFFICIAL MUNICIPAL YOUTH ID PASS
             </p>
             <p className="text-[9px] text-slate-300 italic font-serif">

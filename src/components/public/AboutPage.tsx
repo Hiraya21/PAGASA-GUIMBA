@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { GUIMBA_BARANGAYS } from '../../data/mockData';
+import { PagasaLogo } from '../common/PagasaLogo';
 import { 
   Shield, 
   Target, 
@@ -29,14 +30,20 @@ export const AboutPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-16">
-      {/* Header Banner */}
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-          About PAGASA Guimba
+      {/* Header Banner with Official Seal */}
+      <div className="text-center max-w-3xl mx-auto space-y-4">
+        <div className="flex justify-center mb-2">
+          <PagasaLogo size={96} showText={false} className="hover:scale-105 transition-transform" />
+        </div>
+        <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3.5 py-1.5 rounded-full border border-sky-200">
+          Official Youth Federation • Guimba, Nueva Ecija
         </span>
         <h1 className="text-3xl sm:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
-          Empowering Guimba's Youth Since 2018
+          Empowering Guimba's Youth
         </h1>
+        <p className="text-sky-800 font-bold text-sm sm:text-base tracking-wide">
+          "INSPIRE • LEARN • LEAD"
+        </p>
         <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
           The premier municipal youth federation of Guimba, Nueva Ecija, dedicated to nurturing visionary leaders, fostering community solidarity, and driving grassroots progress.
         </p>
