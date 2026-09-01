@@ -37,6 +37,21 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_AUDIT_LOGS
 } from '../data/mockData';
+import { sqlApi } from '../services/sqlApi';
+import {
+  signInWithGoogle,
+  signOutFirebase
+} from '../firebase/firestoreService';
+import {
+  isSupabaseConfigured,
+  supabaseSignIn,
+  supabaseSignUp,
+  supabaseSignInWithOAuth,
+  supabaseSignOut,
+  supabaseResetPassword,
+  supabaseOnAuthStateChange,
+  supabaseGetSession
+} from '../lib/supabase';
 
 export type ActivePage = 
   | 'home'
@@ -110,7 +125,12 @@ interface AppContextType {
   // Role & Auth functions
   switchRole: (role: UserRole, userPayload?: User) => void;
   loginUser: (email: string, role?: UserRole) => boolean;
-  logoutUser: () => void;
+  loginWithSupabase: (email: string, password: string, targetRole?: UserRole) => Promise<{ success: boolean; message?: string }>;
+  signUpWithSupabase: (email: string, password: string, memberData: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>) => Promise<{ success: boolean; message?: string; memberId?: string }>;
+  resetUserPassword: (email: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: () => Promise<boolean>;
+  logoutUser: () => Promise<void>;
+  isSupabaseConfigured: () => boolean;
   updateCurrentUser: (updates: Partial<User>) => void;
   updateUserProfilePicture: (avatarUrl: string) => void;
   showToast: (type: 'success' | 'error' | 'info' | 'warning', title: string, message: string) => void;
@@ -427,6 +447,117 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('pagasa_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
+  // PostgreSQL Database Data Synchronization & Loading
+  useEffect(() => {
+    async function loadDataFromDb() {
+      try {
+        const [
+          dbSettings,
+          dbMembers,
+          dbEvents,
+          dbRegistrations,
+          dbSessions,
+          dbAttendanceRecords,
+          dbProjects,
+          dbActivities,
+          dbAnnouncements,
+          dbOfficials,
+          dbCertificates,
+          dbGallery,
+          dbNotifications,
+          dbAuditLogs
+        ] = await Promise.all([
+          sqlApi.getSettings(),
+          sqlApi.getMembers(),
+          sqlApi.getEvents(),
+          sqlApi.getRegistrations(),
+          sqlApi.getAttendanceSessions(),
+          sqlApi.getAttendanceRecords(),
+          sqlApi.getProjects(),
+          sqlApi.getActivities(),
+          sqlApi.getAnnouncements(),
+          sqlApi.getOfficials(),
+          sqlApi.getCertificates(),
+          sqlApi.getGallery(),
+          sqlApi.getNotifications(),
+          sqlApi.getAuditLogs()
+        ]);
+
+        if (dbSettings) setSettings(dbSettings);
+        if (dbMembers && dbMembers.length > 0) setMembers(dbMembers);
+        if (dbEvents && dbEvents.length > 0) setEvents(dbEvents);
+        if (dbRegistrations && dbRegistrations.length > 0) setRegistrations(dbRegistrations);
+        if (dbSessions && dbSessions.length > 0) setAttendanceSessions(dbSessions);
+        if (dbAttendanceRecords && dbAttendanceRecords.length > 0) setAttendanceRecords(dbAttendanceRecords);
+        if (dbProjects && dbProjects.length > 0) setProjects(dbProjects);
+        if (dbActivities && dbActivities.length > 0) setActivities(dbActivities);
+        if (dbAnnouncements && dbAnnouncements.length > 0) setAnnouncements(dbAnnouncements);
+        if (dbOfficials && dbOfficials.length > 0) setOfficials(dbOfficials);
+        if (dbCertificates && dbCertificates.length > 0) setCertificates(dbCertificates);
+        if (dbGallery && dbGallery.length > 0) setGallery(dbGallery);
+        if (dbNotifications && dbNotifications.length > 0) setNotifications(dbNotifications);
+        if (dbAuditLogs && dbAuditLogs.length > 0) setAuditLogs(dbAuditLogs);
+      } catch (err) {
+        console.error('Error fetching data from PostgreSQL database:', err);
+      }
+    }
+
+    loadDataFromDb();
+  }, []);
+
+  // Supabase Auth State Synchronization
+  useEffect(() => {
+    // Initial session check
+    supabaseGetSession().then((session) => {
+      if (session?.user) {
+        const email = session.user.email || '';
+        const metadata = session.user.user_metadata || {};
+        const isSuperAdminEmail = email.toLowerCase() === 'giancarlomagat19@gmail.com' || email.toLowerCase().includes('admin');
+        const matchedMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+
+        const userObj: User = {
+          id: session.user.id,
+          name: metadata.fullName || metadata.full_name || matchedMember?.fullName || email.split('@')[0] || 'User',
+          email: email,
+          role: isSuperAdminEmail ? 'SUPER_ADMIN' : ((metadata.role as UserRole) || (matchedMember ? 'MEMBER' : 'MEMBER')),
+          avatar: metadata.avatar_url || metadata.profilePicture || matchedMember?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          memberId: metadata.memberId || matchedMember?.memberId || `PAGASA-2026-${Math.floor(1000 + Math.random() * 9000)}`
+        };
+
+        setCurrentUser(userObj);
+        setCurrentRole(userObj.role);
+      }
+    }).catch(console.error);
+
+    // Live auth state change listener
+    const authSub = supabaseOnAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const email = session.user.email || '';
+        const metadata = session.user.user_metadata || {};
+        const isSuperAdminEmail = email.toLowerCase() === 'giancarlomagat19@gmail.com' || email.toLowerCase().includes('admin');
+        const matchedMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+
+        const userObj: User = {
+          id: session.user.id,
+          name: metadata.fullName || metadata.full_name || matchedMember?.fullName || email.split('@')[0] || 'User',
+          email: email,
+          role: isSuperAdminEmail ? 'SUPER_ADMIN' : ((metadata.role as UserRole) || (matchedMember ? 'MEMBER' : 'MEMBER')),
+          avatar: metadata.avatar_url || metadata.profilePicture || matchedMember?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          memberId: metadata.memberId || matchedMember?.memberId || `PAGASA-2026-${Math.floor(1000 + Math.random() * 9000)}`
+        };
+
+        setCurrentUser(userObj);
+        setCurrentRole(userObj.role);
+      }
+    });
+
+    return () => {
+      if (authSub?.data?.subscription?.unsubscribe) {
+        authSub.data.subscription.unsubscribe();
+      }
+    };
+  }, [members]);
+
   // Toast Helpers
   const showToast = (type: 'success' | 'error' | 'info' | 'warning', title: string, message: string) => {
     const id = 'toast-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
@@ -464,6 +595,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ipAddress: '192.168.1.45 (PAGASA MIS Portal)'
     };
     setAuditLogs(prev => [newLog, ...prev]);
+    sqlApi.saveAuditLog(newLog).catch(console.error);
   };
 
   // Notifications
@@ -477,14 +609,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isRead: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+    sqlApi.saveNotification(newNotif).catch(console.error);
   };
 
   const markNotificationAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications(prev => prev.map(n => {
+      if (n.id === id) {
+        const updated = { ...n, isRead: true };
+        sqlApi.saveNotification(updated).catch(console.error);
+        return updated;
+      }
+      return n;
+    }));
   };
 
   const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setNotifications(prev => prev.map(n => {
+      const updated = { ...n, isRead: true };
+      sqlApi.saveNotification(updated).catch(console.error);
+      return updated;
+    }));
     showToast('info', 'Notifications', 'All notifications marked as read.');
   };
 
@@ -515,6 +659,142 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       setCurrentPage('home');
       showToast('info', 'Guest View', 'Browsing as Guest / Public Visitor');
+    }
+  };
+
+  const loginWithGoogle = async (): Promise<boolean> => {
+    try {
+      if (isSupabaseConfigured()) {
+        await supabaseSignInWithOAuth('google');
+        return true;
+      }
+
+      const authUser = await signInWithGoogle();
+      if (!authUser) return false;
+
+      const email = authUser.email || '';
+      const isSuperAdminEmail = email.toLowerCase() === 'giancarlomagat19@gmail.com' || email.toLowerCase().includes('admin');
+      
+      const matchedMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+
+      const userObj: User = {
+        id: authUser.id,
+        name: authUser.name || email.split('@')[0] || 'User',
+        email: email,
+        role: isSuperAdminEmail ? 'SUPER_ADMIN' : matchedMember ? 'MEMBER' : 'MEMBER',
+        avatar: authUser.avatar,
+        memberId: matchedMember?.memberId || `PAGASA-2026-${Math.floor(1000 + Math.random() * 9000)}`
+      };
+
+      switchRole(userObj.role, userObj);
+      logAuditEvent('Google Sign-In', 'Settings', `User signed in with Google: ${email}`);
+      showToast('success', 'Google Sign-In Successful', `Welcome, ${userObj.name}!`);
+      return true;
+    } catch (err: any) {
+      console.error('Google Sign-In error:', err);
+      showToast('error', 'Google Sign-In Failed', err?.message || 'Authentication error.');
+      return false;
+    }
+  };
+
+  const loginWithSupabase = async (
+    email: string,
+    password: string,
+    targetRole?: UserRole
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      if (isSupabaseConfigured()) {
+        const data = await supabaseSignIn(email, password);
+        if (data?.user) {
+          const userEmail = data.user.email || email;
+          const metadata = data.user.user_metadata || {};
+          const isSuperAdminEmail = userEmail.toLowerCase() === 'giancarlomagat19@gmail.com' || userEmail.toLowerCase().includes('admin');
+          const matchedMember = members.find(m => m.email.toLowerCase() === userEmail.toLowerCase());
+
+          const userObj: User = {
+            id: data.user.id,
+            name: metadata.fullName || metadata.full_name || matchedMember?.fullName || userEmail.split('@')[0] || 'User',
+            email: userEmail,
+            role: isSuperAdminEmail ? 'SUPER_ADMIN' : ((targetRole || (metadata.role as UserRole) || (matchedMember ? 'MEMBER' : 'MEMBER'))),
+            avatar: metadata.avatar_url || matchedMember?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+            memberId: metadata.memberId || matchedMember?.memberId || `PAGASA-2026-${Math.floor(1000 + Math.random() * 9000)}`
+          };
+
+          switchRole(userObj.role, userObj);
+          logAuditEvent('Supabase Sign-In', 'Settings', `User logged in via Supabase Auth: ${userEmail}`);
+          showToast('success', 'Supabase Authenticated', `Welcome back, ${userObj.name}!`);
+          return { success: true };
+        }
+      }
+
+      // Fallback to local authentication registry
+      const localOk = loginUser(email, targetRole);
+      if (localOk) {
+        return { success: true };
+      }
+      return { success: false, message: 'Account not found or password incorrect.' };
+    } catch (err: any) {
+      console.error('Supabase Sign-in error:', err);
+      // If error from Supabase, try local registry before giving up
+      const matchedUser = INITIAL_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const matchedMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+      if (matchedUser || matchedMember) {
+        const localOk = loginUser(email, targetRole);
+        if (localOk) {
+          showToast('info', 'Local Session Active', `Logged in using local portal credentials.`);
+          return { success: true };
+        }
+      }
+      showToast('error', 'Login Failed', err.message || 'Authentication error.');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const signUpWithSupabase = async (
+    email: string,
+    password: string,
+    memberData: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>
+  ): Promise<{ success: boolean; message?: string; memberId?: string }> => {
+    try {
+      // 1. Save member to organization database
+      const createdMember = addMember(memberData);
+
+      // 2. Register user account in Supabase Auth if credentials configured
+      if (isSupabaseConfigured()) {
+        await supabaseSignUp(email, password, {
+          fullName: memberData.fullName,
+          memberId: createdMember.memberId,
+          contactNumber: memberData.contactNumber,
+          barangay: memberData.barangay,
+          role: 'MEMBER'
+        });
+        showToast('success', 'Supabase Account Registered', `Membership account created for ${email}.`);
+      }
+
+      logAuditEvent('Member Registration', 'Members', `Registered new member: ${memberData.fullName} (${createdMember.memberId}) with Supabase Auth.`);
+      return { success: true, memberId: createdMember.memberId };
+    } catch (err: any) {
+      console.error('Supabase signup error:', err);
+      // Fallback: Create member in local database
+      const createdMember = addMember(memberData);
+      showToast('warning', 'Local Registration Completed', `Saved application with Member ID: ${createdMember.memberId}`);
+      return { success: true, memberId: createdMember.memberId };
+    }
+  };
+
+  const resetUserPassword = async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (isSupabaseConfigured()) {
+        await supabaseResetPassword(email);
+        showToast('success', 'Reset Email Dispatched', `Password reset instructions sent to ${email}.`);
+        return { success: true, message: `Password reset link sent to ${email}.` };
+      } else {
+        showToast('info', 'Password Reset Requested', `Demo password reset simulated for ${email}.`);
+        return { success: true, message: `Password reset link simulated for ${email}.` };
+      }
+    } catch (err: any) {
+      showToast('error', 'Reset Failed', err.message || 'Failed to send reset link.');
+      return { success: false, message: err.message };
     }
   };
 
@@ -557,7 +837,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const logoutUser = () => {
+  const logoutUser = async () => {
+    try {
+      if (isSupabaseConfigured()) {
+        await supabaseSignOut();
+      }
+    } catch (err) {
+      console.warn('Supabase sign out notice:', err);
+    }
+    signOutFirebase().catch(console.error);
     setCurrentUser(null);
     setCurrentRole('GUEST');
     setCurrentPage('home');
@@ -576,11 +864,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updates.avatar || updates.name) {
       setMembers(prev => prev.map(m => {
         if (m.id === currentUser?.id || m.memberId === currentUser?.memberId || (currentUser?.email && m.email.toLowerCase() === currentUser.email.toLowerCase())) {
-          return {
+          const updated = {
             ...m,
             ...(updates.avatar ? { profilePicture: updates.avatar } : {}),
             ...(updates.name ? { fullName: updates.name } : {})
           };
+          sqlApi.saveMember(updated).catch(console.error);
+          return updated;
         }
         return m;
       }));
@@ -595,7 +885,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Settings
   const updateSettings = (newSettings: Partial<OrganizationSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    sqlApi.saveSettings(updated).catch(console.error);
     logAuditEvent('Updated System Settings', 'Settings', 'Modified organization information or system policies.');
     showToast('success', 'Settings Saved', 'Organization and system settings updated.');
   };
@@ -620,6 +912,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     setMembers(prev => [newMember, ...prev]);
+    sqlApi.saveMember(newMember).catch(console.error);
     logAuditEvent('Registered New Member', 'Members', `Added member: ${newMember.fullName} (${memberId}).`);
     addNotification('New Member Application', `${newMember.fullName} from Brgy. ${newMember.barangay} registered.`, 'system');
     showToast('success', 'Registration Submitted', `Member profile created with ID ${memberId}.`);
@@ -627,8 +920,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateMember = (id: string, updates: Partial<Member>) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-    if (currentUser && (currentUser.id === id || currentUser.memberId === updates.memberId || (updates.email && currentUser.email.toLowerCase() === updates.email.toLowerCase()))) {
+    setMembers(prev => prev.map(m => {
+      if (m.id === id) {
+        const updated = { ...m, ...updates };
+        sqlApi.saveMember(updated).catch(console.error);
+        return updated;
+      }
+      return m;
+    }));
+    if (currentUser && (currentUser.id === id || currentUser.memberId === updates.memberId || (updates.email && currentUser.email.toLowerCase() === currentUser.email.toLowerCase()))) {
       setCurrentUser(prev => {
         if (!prev) return null;
         const updatedUser = {
@@ -646,7 +946,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateMemberStatus = (id: string, status: MembershipStatus) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, membershipStatus: status } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.id === id) {
+        const updated = { ...m, membershipStatus: status };
+        sqlApi.saveMember(updated).catch(console.error);
+        return updated;
+      }
+      return m;
+    }));
     const target = members.find(m => m.id === id);
     logAuditEvent(`Changed Member Status to ${status}`, 'Members', `Set status of ${target?.fullName} (${target?.memberId}) to ${status}.`);
     showToast('success', 'Status Updated', `${target?.fullName || 'Member'} status is now ${status}.`);
@@ -655,6 +962,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteMember = (id: string) => {
     const target = members.find(m => m.id === id);
     setMembers(prev => prev.filter(m => m.id !== id));
+    sqlApi.deleteMember(id).catch(console.error);
     logAuditEvent('Deleted Member Record', 'Members', `Removed member ${target?.fullName} (${target?.memberId}).`);
     showToast('info', 'Member Deleted', 'Member has been removed from registry.');
   };
@@ -668,6 +976,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0]
     };
     setEvents(prev => [newEvent, ...prev]);
+    sqlApi.saveEvent(newEvent).catch(console.error);
     logAuditEvent('Created Event', 'Events', `Created new event: "${newEvent.title}".`);
     addNotification('New Event Posted', `Check out the newly announced event: ${newEvent.title}`, 'event');
     showToast('success', 'Event Created', `"${newEvent.title}" has been created.`);
@@ -675,7 +984,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateEvent = (id: string, updates: Partial<EventItem>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    setEvents(prev => prev.map(e => {
+      if (e.id === id) {
+        const updated = { ...e, ...updates };
+        sqlApi.saveEvent(updated).catch(console.error);
+        return updated;
+      }
+      return e;
+    }));
     const target = events.find(e => e.id === id);
     logAuditEvent('Updated Event Details', 'Events', `Modified event: "${target?.title || id}".`);
     showToast('success', 'Event Updated', 'Event changes have been saved.');
@@ -684,6 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteEvent = (id: string) => {
     const target = events.find(e => e.id === id);
     setEvents(prev => prev.filter(e => e.id !== id));
+    sqlApi.deleteEvent(id).catch(console.error);
     logAuditEvent('Deleted Event', 'Events', `Removed event: "${target?.title}".`);
     showToast('info', 'Event Removed', 'Event has been deleted.');
   };
@@ -721,13 +1038,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setRegistrations(prev => [...prev, newReg]);
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, currentParticipants: e.currentParticipants + 1 } : e));
+    sqlApi.saveRegistration(newReg).catch(console.error);
+
+    const updatedEventCount = targetEvent.currentParticipants + 1;
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, currentParticipants: updatedEventCount } : e));
+    sqlApi.saveEvent({ ...targetEvent, currentParticipants: updatedEventCount }).catch(console.error);
     
     // Update member stats
-    setMembers(prev => prev.map(m => m.memberId === memberInfo.memberId ? {
-      ...m,
-      stats: { ...m.stats, eventsJoined: m.stats.eventsJoined + 1 }
-    } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.memberId === memberInfo.memberId) {
+        const updated = {
+          ...m,
+          stats: { ...m.stats, eventsJoined: m.stats.eventsJoined + 1 }
+        };
+        sqlApi.saveMember(updated).catch(console.error);
+        return updated;
+      }
+      return m;
+    }));
 
     addNotification('Registration Confirmed', `You successfully registered for "${targetEvent.title}".`, 'event');
     showToast('success', 'Registration Confirmed', `You are registered for "${targetEvent.title}".`);
@@ -735,8 +1063,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const cancelEventRegistration = (eventId: string, memberId: string) => {
+    const regToRemove = registrations.find(r => r.eventId === eventId && r.memberId === memberId);
+    if (regToRemove) {
+      sqlApi.deleteRegistration(regToRemove.id).catch(console.error);
+    }
     setRegistrations(prev => prev.filter(r => !(r.eventId === eventId && r.memberId === memberId)));
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, currentParticipants: Math.max(0, e.currentParticipants - 1) } : e));
+    
+    const targetEvent = events.find(e => e.id === eventId);
+    if (targetEvent) {
+      const updatedCount = Math.max(0, targetEvent.currentParticipants - 1);
+      setEvents(prev => prev.map(e => e.id === eventId ? { ...e, currentParticipants: updatedCount } : e));
+      sqlApi.saveEvent({ ...targetEvent, currentParticipants: updatedCount }).catch(console.error);
+    }
     showToast('info', 'Registration Cancelled', 'Your registration has been cancelled.');
   };
 
@@ -762,13 +1100,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString()
     };
     setAttendanceSessions(prev => [newSession, ...prev]);
+    sqlApi.saveAttendanceSession(newSession).catch(console.error);
     logAuditEvent('Opened Attendance Session', 'Attendance', `Created live attendance session for "${newSession.eventTitle}".`);
     showToast('success', 'Session Created', `Live attendance session opened for ${newSession.eventTitle}.`);
     return newSession;
   };
 
   const toggleAttendanceSession = (sessionId: string, isOpen: boolean) => {
-    setAttendanceSessions(prev => prev.map(s => s.id === sessionId ? { ...s, isOpen } : s));
+    setAttendanceSessions(prev => prev.map(s => {
+      if (s.id === sessionId) {
+        const updated = { ...s, isOpen };
+        sqlApi.saveAttendanceSession(updated).catch(console.error);
+        return updated;
+      }
+      return s;
+    }));
     const target = attendanceSessions.find(s => s.id === sessionId);
     logAuditEvent(`${isOpen ? 'Opened' : 'Closed'} Attendance Session`, 'Attendance', `Session for "${target?.eventTitle}" is now ${isOpen ? 'OPEN' : 'CLOSED'}.`);
     showToast('info', 'Session Updated', `Attendance session is now ${isOpen ? 'OPEN' : 'CLOSED'}.`);
@@ -776,7 +1122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const recordAttendance = (
     sessionId: string,
-    memberIdentifier: string, // could be memberId or name or scanned QR payload
+    memberIdentifier: string,
     method: 'QR_SCAN' | 'MANUAL' | 'SEARCH',
     statusOverride?: AttendanceStatus,
     remarks?: string
@@ -808,7 +1154,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Determine status (Present vs Late based on grace period if not overridden)
+    // Determine status
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const finalStatus: AttendanceStatus = statusOverride || 'Present';
@@ -831,6 +1177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedRecords = [newRecord, ...attendanceRecords];
     setAttendanceRecords(updatedRecords);
+    sqlApi.saveAttendanceRecord(newRecord).catch(console.error);
 
     // Recalculate session metrics
     const sessionRecords = updatedRecords.filter(r => r.sessionId === sessionId);
@@ -841,25 +1188,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalAttended = present + late;
     const rate = session.totalRegistered > 0 ? Number(((totalAttended / session.totalRegistered) * 100).toFixed(1)) : 100;
 
-    setAttendanceSessions(prev => prev.map(s => s.id === sessionId ? {
-      ...s,
+    const updatedSession: AttendanceSession = {
+      ...session,
       presentCount: present,
       lateCount: late,
       absentCount: absent,
       excusedCount: excused,
       attendanceRate: rate
-    } : s));
+    };
+
+    setAttendanceSessions(prev => prev.map(s => s.id === sessionId ? updatedSession : s));
+    sqlApi.saveAttendanceSession(updatedSession).catch(console.error);
 
     // Update member stats
-    setMembers(prev => prev.map(m => m.memberId === member.memberId ? {
-      ...m,
-      stats: {
-        ...m.stats,
-        totalAttendance: m.stats.totalAttendance + 1,
-        volunteerHours: m.stats.volunteerHours + 4,
-        attendanceRate: Number((((m.stats.totalAttendance + 1) / Math.max(1, m.stats.eventsJoined || 1)) * 100).toFixed(1))
+    setMembers(prev => prev.map(m => {
+      if (m.memberId === member.memberId) {
+        const updated = {
+          ...m,
+          stats: {
+            ...m.stats,
+            totalAttendance: m.stats.totalAttendance + 1,
+            volunteerHours: m.stats.volunteerHours + 4,
+            attendanceRate: Number((((m.stats.totalAttendance + 1) / Math.max(1, m.stats.eventsJoined || 1)) * 100).toFixed(1))
+          }
+        };
+        sqlApi.saveMember(updated).catch(console.error);
+        return updated;
       }
-    } : m));
+      return m;
+    }));
 
     logAuditEvent('Recorded Attendance', 'Attendance', `Marked ${member.fullName} (${member.memberId}) as ${finalStatus} for "${session.eventTitle}".`);
     addNotification('Attendance Recorded', `Your attendance for "${session.eventTitle}" was logged at ${timeString} (${finalStatus}).`, 'attendance');
@@ -872,13 +1229,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAttendanceRecordStatus = (recordId: string, status: AttendanceStatus, remarks?: string) => {
-    setAttendanceRecords(prev => prev.map(r => r.id === recordId ? { ...r, status, remarks: remarks !== undefined ? remarks : r.remarks } : r));
+    setAttendanceRecords(prev => prev.map(r => {
+      if (r.id === recordId) {
+        const updated = { ...r, status, remarks: remarks !== undefined ? remarks : r.remarks };
+        sqlApi.saveAttendanceRecord(updated).catch(console.error);
+        return updated;
+      }
+      return r;
+    }));
     logAuditEvent('Corrected Attendance Record', 'Attendance', `Updated attendance record #${recordId} to ${status}.`);
     showToast('success', 'Attendance Updated', `Record updated to ${status}.`);
   };
 
   const deleteAttendanceRecord = (recordId: string) => {
     setAttendanceRecords(prev => prev.filter(r => r.id !== recordId));
+    sqlApi.deleteAttendanceRecord(recordId).catch(console.error);
     logAuditEvent('Deleted Attendance Record', 'Attendance', `Removed attendance record #${recordId}.`);
     showToast('info', 'Record Removed', 'Attendance entry removed.');
   };
@@ -887,17 +1252,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addProject = (data: Omit<ProjectItem, 'id'>) => {
     const newProject: ProjectItem = { ...data, id: 'prj-' + Date.now() };
     setProjects(prev => [newProject, ...prev]);
+    sqlApi.saveProject(newProject).catch(console.error);
     logAuditEvent('Added New Project', 'Projects', `Created project: "${newProject.title}".`);
     showToast('success', 'Project Added', `"${newProject.title}" has been added.`);
   };
 
   const updateProject = (id: string, updates: Partial<ProjectItem>) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setProjects(prev => prev.map(p => {
+      if (p.id === id) {
+        const updated = { ...p, ...updates };
+        sqlApi.saveProject(updated).catch(console.error);
+        return updated;
+      }
+      return p;
+    }));
     showToast('success', 'Project Updated', 'Project changes saved.');
   };
 
   const deleteProject = (id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id));
+    sqlApi.deleteProject(id).catch(console.error);
     showToast('info', 'Project Deleted', 'Project has been removed.');
   };
 
@@ -905,17 +1279,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addActivity = (data: Omit<ActivityItem, 'id'>) => {
     const newAct: ActivityItem = { ...data, id: 'act-' + Date.now() };
     setActivities(prev => [newAct, ...prev]);
+    sqlApi.saveActivity(newAct).catch(console.error);
     logAuditEvent('Created Activity', 'Activities', `Added activity: "${newAct.title}".`);
     showToast('success', 'Activity Created', `"${newAct.title}" added to schedule.`);
   };
 
   const updateActivity = (id: string, updates: Partial<ActivityItem>) => {
-    setActivities(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    setActivities(prev => prev.map(a => {
+      if (a.id === id) {
+        const updated = { ...a, ...updates };
+        sqlApi.saveActivity(updated).catch(console.error);
+        return updated;
+      }
+      return a;
+    }));
     showToast('success', 'Activity Updated', 'Activity saved.');
   };
 
   const deleteActivity = (id: string) => {
     setActivities(prev => prev.filter(a => a.id !== id));
+    sqlApi.deleteActivity(id).catch(console.error);
     showToast('info', 'Activity Removed', 'Activity deleted.');
   };
 
@@ -923,18 +1306,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addAnnouncement = (data: Omit<AnnouncementItem, 'id' | 'views'>) => {
     const newAnn: AnnouncementItem = { ...data, id: 'ann-' + Date.now(), views: 1 };
     setAnnouncements(prev => [newAnn, ...prev]);
+    sqlApi.saveAnnouncement(newAnn).catch(console.error);
     logAuditEvent('Published Announcement', 'Announcements', `Created announcement: "${newAnn.title}".`);
     addNotification('New Announcement', newAnn.title, 'announcement');
     showToast('success', 'Announcement Published', `"${newAnn.title}" is now live.`);
   };
 
   const updateAnnouncement = (id: string, updates: Partial<AnnouncementItem>) => {
-    setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    setAnnouncements(prev => prev.map(a => {
+      if (a.id === id) {
+        const updated = { ...a, ...updates };
+        sqlApi.saveAnnouncement(updated).catch(console.error);
+        return updated;
+      }
+      return a;
+    }));
     showToast('success', 'Announcement Updated', 'Announcement saved.');
   };
 
   const deleteAnnouncement = (id: string) => {
     setAnnouncements(prev => prev.filter(a => a.id !== id));
+    sqlApi.deleteAnnouncement(id).catch(console.error);
     showToast('info', 'Announcement Deleted', 'Announcement removed.');
   };
 
@@ -942,30 +1334,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addGalleryPhoto = (data: Omit<GalleryPhoto, 'id'>) => {
     const newPhoto: GalleryPhoto = { ...data, id: 'gal-' + Date.now() };
     setGallery(prev => [newPhoto, ...prev]);
+    sqlApi.saveGalleryPhoto(newPhoto).catch(console.error);
     logAuditEvent('Uploaded Gallery Photo', 'Gallery', `Added image: "${newPhoto.title}".`);
     showToast('success', 'Photo Added', 'Image uploaded to photo gallery.');
   };
 
   const deleteGalleryPhoto = (id: string) => {
     setGallery(prev => prev.filter(g => g.id !== id));
+    sqlApi.deleteGalleryPhoto(id).catch(console.error);
     showToast('info', 'Photo Removed', 'Gallery item deleted.');
   };
 
   // Officials
   const addOfficial = (data: Omit<OfficialItem, 'id'>) => {
     const newOfficial: OfficialItem = { ...data, id: 'off-' + Date.now() };
-    setOfficials(prev => [...prev, newOfficial].sort((a, b) => a.rank - b.rank));
+    const updated = [...officials, newOfficial].sort((a, b) => (a.rank || 1) - (b.rank || 1));
+    setOfficials(updated);
+    sqlApi.saveOfficial(newOfficial).catch(console.error);
     logAuditEvent('Added Organization Official', 'Officials', `Added ${newOfficial.fullName} (${newOfficial.position}).`);
     showToast('success', 'Official Added', `${newOfficial.fullName} added to officials roster.`);
   };
 
   const updateOfficial = (id: string, updates: Partial<OfficialItem>) => {
-    setOfficials(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o).sort((a, b) => a.rank - b.rank));
+    const updated = officials.map(o => {
+      if (o.id === id) {
+        const u = { ...o, ...updates };
+        sqlApi.saveOfficial(u).catch(console.error);
+        return u;
+      }
+      return o;
+    }).sort((a, b) => (a.rank || 1) - (b.rank || 1));
+    setOfficials(updated);
     showToast('success', 'Official Updated', 'Official information saved.');
   };
 
   const deleteOfficial = (id: string) => {
     setOfficials(prev => prev.filter(o => o.id !== id));
+    sqlApi.deleteOfficial(id).catch(console.error);
     showToast('info', 'Official Removed', 'Official removed from roster.');
   };
 
@@ -979,12 +1384,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qrVerificationUrl: `https://pagasaguimba.org/verify/${certNum}`
     };
     setCertificates(prev => [newCert, ...prev]);
+    sqlApi.saveCertificate(newCert).catch(console.error);
     
     // Update member certificate count
-    setMembers(prev => prev.map(m => m.memberId === data.memberId ? {
-      ...m,
-      stats: { ...m.stats, certificatesEarned: m.stats.certificatesEarned + 1 }
-    } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.memberId === data.memberId) {
+        const updated = {
+          ...m,
+          stats: { ...m.stats, certificatesEarned: m.stats.certificatesEarned + 1 }
+        };
+        sqlApi.saveMember(updated).catch(console.error);
+        return updated;
+      }
+      return m;
+    }));
 
     logAuditEvent('Issued Official Certificate', 'Certificates', `Issued certificate ${certNum} to ${data.memberName} for "${data.eventOrActivityTitle}".`);
     addNotification('Certificate Generated', `Your certificate for "${data.eventOrActivityTitle}" is ready to view & download.`, 'certificate');
@@ -994,6 +1407,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCertificate = (id: string) => {
     setCertificates(prev => prev.filter(c => c.id !== id));
+    sqlApi.deleteCertificate(id).catch(console.error);
     showToast('info', 'Certificate Deleted', 'Certificate record deleted.');
   };
 
@@ -1025,7 +1439,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsGlobalSearchOpen,
         switchRole,
         loginUser,
+        loginWithSupabase,
+        signUpWithSupabase,
+        resetUserPassword,
+        loginWithGoogle,
         logoutUser,
+        isSupabaseConfigured,
         updateCurrentUser,
         updateUserProfilePicture,
         showToast,

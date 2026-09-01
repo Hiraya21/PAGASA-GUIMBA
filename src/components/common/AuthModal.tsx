@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { GUIMBA_BARANGAYS } from '../../data/mockData';
-import { X, Lock, Mail, User, Phone, MapPin, Calendar, BookOpen, Shield, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { X, Lock, Mail, User, Phone, Calendar, Shield, ArrowRight, CheckCircle2, Loader2, Sparkles, KeyRound } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 
 export const AuthModal: React.FC = () => {
@@ -11,10 +11,31 @@ export const AuthModal: React.FC = () => {
     setIsAuthModalOpen,
     authModalMode,
     setAuthModalMode,
-    loginUser,
-    addMember,
-    switchRole
+    loginWithSupabase,
+    signUpWithSupabase,
+    resetUserPassword,
+    loginWithGoogle,
+    switchRole,
+    isSupabaseConfigured
   } = useApp();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const success = await loginWithGoogle();
+      if (success) {
+        setIsAuthModalOpen(false);
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -39,56 +60,81 @@ export const AuthModal: React.FC = () => {
 
   if (!isAuthModalOpen) return null;
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim()) return;
+    if (!loginEmail.trim() || !loginPassword.trim()) return;
 
-    if (authModalMode === 'admin-login') {
-      const ok = loginUser(loginEmail, 'SUPER_ADMIN');
-      if (ok) setIsAuthModalOpen(false);
-    } else {
-      const ok = loginUser(loginEmail, 'MEMBER');
-      if (ok) setIsAuthModalOpen(false);
+    setIsSubmitting(true);
+    try {
+      const targetRole = authModalMode === 'admin-login' ? 'SUPER_ADMIN' : 'MEMBER';
+      const res = await loginWithSupabase(loginEmail, loginPassword, targetRole);
+      if (res.success) {
+        setIsAuthModalOpen(false);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regFullName.trim() || !regEmail.trim() || !regContact.trim()) return;
+    if (!regFullName.trim() || !regEmail.trim() || !regContact.trim() || !regPassword.trim()) return;
 
-    // Calculate approximate age
-    const birthYear = new Date(regBirthdate).getFullYear();
-    const currentYear = 2026;
-    const calculatedAge = Math.max(15, currentYear - birthYear);
-
-    const created = addMember({
-      fullName: regFullName,
-      email: regEmail,
-      contactNumber: regContact,
-      birthdate: regBirthdate,
-      age: calculatedAge,
-      gender: regGender,
-      address: regAddress || `Purok 2, Brgy. ${regBarangay}`,
-      barangay: regBarangay,
-      educationalStatus: regEducation,
-      occupation: regOccupation || 'Student',
-      profilePicture: regGender === 'Female' 
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-        : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-      membershipStatus: 'Pending',
-      organizationPosition: 'Youth Member',
-      committee: 'General Youth Volunteer',
-      emergencyContact: {
-        name: regEmergencyName || 'Family Member',
-        relationship: regEmergencyRel || 'Parent',
-        contactNumber: regEmergencyContact || regContact
-      }
-    });
-
-    setRegSuccessMemberId(created.memberId);
+    setIsSubmitting(true);
     try {
-      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-    } catch (_) {}
+      // Calculate approximate age
+      const birthYear = new Date(regBirthdate).getFullYear();
+      const currentYear = 2026;
+      const calculatedAge = Math.max(15, currentYear - birthYear);
+
+      const res = await signUpWithSupabase(regEmail, regPassword, {
+        fullName: regFullName,
+        email: regEmail,
+        contactNumber: regContact,
+        birthdate: regBirthdate,
+        age: calculatedAge,
+        gender: regGender,
+        address: regAddress || `Purok 2, Brgy. ${regBarangay}`,
+        barangay: regBarangay,
+        educationalStatus: regEducation,
+        occupation: regOccupation || 'Student',
+        profilePicture: regGender === 'Female' 
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+          : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+        membershipStatus: 'Pending',
+        organizationPosition: 'Youth Member',
+        committee: 'General Youth Volunteer',
+        emergencyContact: {
+          name: regEmergencyName || 'Family Member',
+          relationship: regEmergencyRel || 'Parent',
+          contactNumber: regEmergencyContact || regContact
+        }
+      });
+
+      if (res.memberId) {
+        setRegSuccessMemberId(res.memberId);
+      } else {
+        setRegSuccessMemberId(`PAGASA-2026-${Math.floor(1000 + Math.random() * 9000)}`);
+      }
+
+      try {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      } catch (_) {}
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotStatus('loading');
+    try {
+      await resetUserPassword(forgotEmail);
+      setForgotStatus('success');
+    } catch {
+      setForgotStatus('idle');
+    }
   };
 
   const quickDemoLogin = (role: 'SUPER_ADMIN' | 'ADMIN' | 'MEMBER') => {
@@ -110,8 +156,9 @@ export const AuthModal: React.FC = () => {
             onClick={() => {
               setIsAuthModalOpen(false);
               setRegSuccessMemberId(null);
+              setShowForgotModal(false);
             }}
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -121,11 +168,19 @@ export const AuthModal: React.FC = () => {
               <Shield className="w-6 h-6 text-yellow-300" />
             </div>
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-sky-200">
-                PAGASA Guimba MIS
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-sky-200">
+                  PAGASA Guimba MIS
+                </span>
+                {isSupabaseConfigured() && (
+                  <span className="text-[10px] bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.2 rounded-full font-bold">
+                    Supabase Auth
+                  </span>
+                )}
+              </div>
               <h2 className="text-xl font-display font-bold">
-                {regSuccessMemberId ? 'Registration Received!' : 
+                {showForgotModal ? 'Reset Portal Password' :
+                  regSuccessMemberId ? 'Registration Received!' : 
                   authModalMode === 'admin-login' ? 'Administrator Portal Access' :
                   authModalMode === 'login' ? 'Member Portal Sign In' : 'Youth Membership Application'}
               </h2>
@@ -133,8 +188,74 @@ export const AuthModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Success Screen after registration */}
-        {regSuccessMemberId ? (
+        {/* Forgot Password View */}
+        {showForgotModal ? (
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-2 text-slate-700 text-sm font-semibold">
+              <KeyRound className="w-5 h-5 text-blue-600" />
+              <span>Password Recovery</span>
+            </div>
+            {forgotStatus === 'success' ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <h4 className="font-bold text-slate-900 text-sm">Reset Instructions Sent</h4>
+                <p className="text-xs text-slate-600">
+                  We've sent a password reset link to <strong>{forgotEmail}</strong>. Please check your inbox and spam folder.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(false);
+                    setForgotStatus('idle');
+                  }}
+                  className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Enter your registered account email and we'll send a secure Supabase password reset link.
+                </p>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Account Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="your.email@example.com"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={forgotStatus === 'loading'}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {forgotStatus === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
+                    <span>Send Reset Link</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : regSuccessMemberId ? (
+          /* Success Screen after registration */
           <div className="p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-9 h-9" />
@@ -148,7 +269,7 @@ export const AuthModal: React.FC = () => {
             </div>
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-left max-w-md mx-auto">
               <p className="font-semibold mb-0.5">Status: Pending Verification</p>
-              Your account will be activated once verified by PAGASA Guimba administrators. You can log in using your registered email address.
+              Your account has been enrolled. You can log in using your registered email and password.
             </div>
             <div className="pt-4 flex gap-3 justify-center">
               <button
@@ -156,7 +277,7 @@ export const AuthModal: React.FC = () => {
                   setRegSuccessMemberId(null);
                   setAuthModalMode('login');
                 }}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-md"
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-md cursor-pointer"
               >
                 Proceed to Login
               </button>
@@ -165,7 +286,7 @@ export const AuthModal: React.FC = () => {
                   setIsAuthModalOpen(false);
                   setRegSuccessMemberId(null);
                 }}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -177,7 +298,7 @@ export const AuthModal: React.FC = () => {
             <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
               <button
                 onClick={() => setAuthModalMode('login')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   authModalMode === 'login'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -187,7 +308,7 @@ export const AuthModal: React.FC = () => {
               </button>
               <button
                 onClick={() => setAuthModalMode('admin-login')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   authModalMode === 'admin-login'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -197,7 +318,7 @@ export const AuthModal: React.FC = () => {
               </button>
               <button
                 onClick={() => setAuthModalMode('register')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   authModalMode === 'register'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -254,43 +375,83 @@ export const AuthModal: React.FC = () => {
                     />
                     Remember me on this device
                   </label>
-                  <a href="#forgot" onClick={(e) => e.preventDefault()} className="text-blue-600 hover:underline font-medium">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(loginEmail);
+                      setShowForgotModal(true);
+                    }}
+                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                  >
                     Forgot password?
-                  </a>
+                  </button>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
-                  <span>Sign In to Portal</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Sign In with Supabase Auth</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                {/* Google Sign In via Supabase */}
+                <div className="relative my-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-slate-400 font-medium">Or continue with</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                  className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 cursor-pointer"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>{isGoogleLoading ? 'Connecting OAuth...' : 'Sign In with Google (OAuth)'}</span>
                 </button>
 
                 {/* 1-Click Fast Demo Logins */}
                 <div className="pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 text-center mb-2.5 font-medium">
-                    ⚡ Quick 1-Click Role Sandbox Access:
+                  <p className="text-xs text-slate-400 text-center mb-2.5 font-medium flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Quick Sandbox Role Access:</span>
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => quickDemoLogin('SUPER_ADMIN')}
-                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left"
+                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left cursor-pointer"
                     >
                       👑 Super Admin
                     </button>
                     <button
                       type="button"
                       onClick={() => quickDemoLogin('ADMIN')}
-                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left"
+                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left cursor-pointer"
                     >
                       🛠️ Officer Admin
                     </button>
                     <button
                       type="button"
                       onClick={() => quickDemoLogin('MEMBER')}
-                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left"
+                      className="p-2 text-xs bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-xl font-semibold transition-colors text-left cursor-pointer"
                     >
                       👤 Member Portal
                     </button>
@@ -341,7 +502,7 @@ export const AuthModal: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Password *
+                      Create Password *
                     </label>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -350,7 +511,7 @@ export const AuthModal: React.FC = () => {
                         required
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="••••••••••••"
+                        placeholder="At least 6 characters"
                         className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
@@ -487,15 +648,22 @@ export const AuthModal: React.FC = () => {
                 </div>
 
                 <div className="text-[11px] text-slate-500">
-                  By registering, you agree to abide by the Constitution and By-Laws of PAGASA Guimba Youth Organization.
+                  By registering, an official Supabase Auth user and PAGASA Guimba youth profile will be established.
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
-                  <span>Submit Membership Application</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Submit Membership Application</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </form>
             )}
@@ -505,3 +673,4 @@ export const AuthModal: React.FC = () => {
     </div>
   );
 };
+

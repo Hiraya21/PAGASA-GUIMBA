@@ -18,17 +18,12 @@ import {
   Palette,
   Eye,
   Sparkles,
-  Check,
-  Camera,
-  UserCheck
+  Check
 } from 'lucide-react';
 import { ColorPalette, ThemeMode } from '../../types';
-import { ChangeProfilePictureModal } from '../common/ChangeProfilePictureModal';
 
 export const AdminSettings: React.FC = () => {
   const { 
-    currentUser,
-    updateCurrentUser,
     settings, 
     updateSettings, 
     resetToDefaults, 
@@ -41,8 +36,6 @@ export const AdminSettings: React.FC = () => {
     setColorPalette
   } = useApp();
 
-  const [isChangeAvatarOpen, setIsChangeAvatarOpen] = useState(false);
-  const [adminName, setAdminName] = useState(currentUser?.name || 'Administrator');
   const [orgName, setOrgName] = useState(settings.orgName);
   const [acronym, setAcronym] = useState(settings.acronym || 'PAGASA');
   const [tagline, setTagline] = useState(settings.tagline);
@@ -104,103 +97,8 @@ export const AdminSettings: React.FC = () => {
           System & Organization Settings
         </h1>
         <p className="text-xs text-slate-500">
-          Configure municipal organization branding, accessibility display themes, and administrative accounts.
+          Configure municipal organization branding, accessibility display themes, and data management.
         </p>
-      </div>
-
-      {/* Administrator Profile & Avatar Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-bold text-base text-slate-900 font-display">
-                Administrator Profile & Avatar
-              </h2>
-              <p className="text-xs text-slate-500">
-                Manage your administrative identity, profile photo, and official display name.
-              </p>
-            </div>
-          </div>
-          <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
-            {currentUser?.role || 'Admin'}
-          </span>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 p-4 sm:p-5 bg-slate-50/80 rounded-2xl border border-slate-200/80">
-          <div className="flex items-center gap-4">
-            <div className="relative group cursor-pointer" onClick={() => setIsChangeAvatarOpen(true)}>
-              <img
-                src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
-                alt={currentUser?.name || 'Administrator'}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md group-hover:brightness-90 transition-all"
-              />
-              <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                <Camera className="w-5 h-5" />
-              </div>
-              <span className="absolute -bottom-1 -right-1 p-1 bg-indigo-600 rounded-lg text-white shadow-xs border border-white">
-                <Camera className="w-3 h-3" />
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm font-display">
-                {currentUser?.name || 'Municipal Administrator'}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {currentUser?.email || 'admin@pagasa-youth.gov.ph'}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded text-slate-600 border border-slate-200 font-semibold">
-                  ID: {currentUser?.id || 'admin-01'}
-                </span>
-                <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Active Session
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => setIsChangeAvatarOpen(true)}
-              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Change Profile Picture</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Administrator Display Name
-            </label>
-            <input
-              type="text"
-              value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white transition-colors"
-              placeholder="e.g. Maria Santos (Super Admin)"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={() => {
-                updateCurrentUser({ name: adminName.trim() });
-                addToast('Administrator name saved successfully.', 'success');
-              }}
-              className="w-full px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Update Display Name</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Theme & Display Accessibility Panel */}
@@ -451,6 +349,79 @@ export const AdminSettings: React.FC = () => {
         </div>
       </form>
 
+      {/* Supabase Cloud Connection & Database Manager */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-base text-slate-900 font-display flex items-center gap-2">
+                <span>Supabase Cloud Database</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Ready
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Connect your external Supabase project (Project URL & Anon Key) or execute the full SQL schema.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>Full Supabase SQL Schema Included (`supabase-schema.sql`)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const schema = `-- PAGASA Guimba Youth MIS Portal Schema for Supabase
+CREATE TABLE IF NOT EXISTS public.members (id TEXT PRIMARY KEY, member_id TEXT NOT NULL UNIQUE, full_name TEXT NOT NULL, email TEXT NOT NULL, contact_number TEXT DEFAULT '', birthdate TEXT DEFAULT '', age INTEGER DEFAULT 18, gender TEXT DEFAULT 'Prefer not to say', address TEXT DEFAULT '', barangay TEXT DEFAULT '', educational_status TEXT DEFAULT 'College / University', occupation TEXT DEFAULT '', profile_picture TEXT DEFAULT '', membership_date TEXT DEFAULT '', membership_status TEXT DEFAULT 'Active', organization_position TEXT, committee TEXT, emergency_contact JSONB, stats JSONB, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public.events (id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, banner_image TEXT DEFAULT '', date TEXT NOT NULL, time TEXT NOT NULL, location TEXT NOT NULL, venue TEXT, organizer TEXT DEFAULT 'PAGASA Guimba', description TEXT DEFAULT '', objectives JSONB, requirements JSONB, max_participants INTEGER DEFAULT 100, max_capacity INTEGER, current_participants INTEGER DEFAULT 0, registered_count INTEGER, registration_deadline TEXT, registration_enabled BOOLEAN DEFAULT true, is_registration_open BOOLEAN DEFAULT true, status TEXT DEFAULT 'Upcoming', is_published BOOLEAN DEFAULT true, qr_code_secret TEXT, speakers JSONB, agenda JSONB, created_at TEXT);
+CREATE TABLE IF NOT EXISTS public.registrations (id TEXT PRIMARY KEY, event_id TEXT NOT NULL, member_id TEXT NOT NULL, member_name TEXT NOT NULL, member_email TEXT NOT NULL, registered_at TEXT NOT NULL, status TEXT DEFAULT 'Registered', notes TEXT);
+CREATE TABLE IF NOT EXISTS public.attendance_sessions (id TEXT PRIMARY KEY, event_id TEXT NOT NULL, event_title TEXT NOT NULL, date TEXT NOT NULL, start_time TEXT NOT NULL, end_time TEXT NOT NULL, location TEXT NOT NULL, is_open BOOLEAN DEFAULT true, qr_code_value TEXT NOT NULL, total_registered INTEGER DEFAULT 0, present_count INTEGER DEFAULT 0, late_count INTEGER DEFAULT 0, absent_count INTEGER DEFAULT 0, excused_count INTEGER DEFAULT 0, attendance_rate INTEGER DEFAULT 0, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS public.attendance_records (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, event_id TEXT NOT NULL, event_title TEXT NOT NULL, member_id TEXT NOT NULL, member_name TEXT NOT NULL, member_barangay TEXT DEFAULT '', check_in_time TEXT NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT 'Present', method TEXT DEFAULT 'QR_SCAN', recorded_by TEXT DEFAULT 'System', remarks TEXT);
+CREATE TABLE IF NOT EXISTS public.projects (id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, image TEXT DEFAULT '', description TEXT DEFAULT '', objectives JSONB, deliverables JSONB, start_date TEXT NOT NULL, end_date TEXT, location TEXT, project_leader TEXT NOT NULL, target_beneficiaries TEXT, budget TEXT, participants_count INTEGER DEFAULT 0, progress INTEGER DEFAULT 0, status TEXT DEFAULT 'Ongoing', results TEXT, gallery JSONB);
+CREATE TABLE IF NOT EXISTS public.activities (id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, time TEXT NOT NULL, location TEXT NOT NULL, leader TEXT NOT NULL, description TEXT DEFAULT '', target_participants INTEGER DEFAULT 50, status TEXT DEFAULT 'Upcoming', attendance_tracked BOOLEAN DEFAULT true);
+CREATE TABLE IF NOT EXISTS public.announcements (id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, author TEXT NOT NULL, author_role TEXT DEFAULT 'Youth Executive', featured_image TEXT DEFAULT '', summary TEXT DEFAULT '', content TEXT DEFAULT '', is_published BOOLEAN DEFAULT true, is_pinned BOOLEAN DEFAULT false, views INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS public.officials (id TEXT PRIMARY KEY, full_name TEXT NOT NULL, position TEXT NOT NULL, committee TEXT DEFAULT 'Executive Committee', rank INTEGER DEFAULT 1, "order" INTEGER DEFAULT 1, profile_picture TEXT DEFAULT '', bio TEXT DEFAULT '', term TEXT DEFAULT '2025 - 2027', contact_email TEXT, contact_number TEXT, facebook_url TEXT);
+CREATE TABLE IF NOT EXISTS public.certificates (id TEXT PRIMARY KEY, certificate_number TEXT NOT NULL UNIQUE, member_id TEXT NOT NULL, member_name TEXT NOT NULL, event_or_activity_title TEXT NOT NULL, certificate_type TEXT NOT NULL, issue_date TEXT NOT NULL, organization TEXT DEFAULT 'PAGASA Guimba', signatories JSONB, description TEXT DEFAULT '', qr_verification_url TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS public.gallery (id TEXT PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, image_url TEXT NOT NULL, date TEXT NOT NULL, caption TEXT, description TEXT, event_tag TEXT, event_title TEXT);
+CREATE TABLE IF NOT EXISTS public.notifications (id TEXT PRIMARY KEY, user_id TEXT, title TEXT NOT NULL, message TEXT NOT NULL, type TEXT DEFAULT 'system', created_at TEXT NOT NULL, is_read BOOLEAN DEFAULT false, link_action TEXT);
+CREATE TABLE IF NOT EXISTS public.audit_logs (id TEXT PRIMARY KEY, user_name TEXT NOT NULL, user_role TEXT NOT NULL, action TEXT NOT NULL, module TEXT NOT NULL, details TEXT NOT NULL, timestamp TEXT NOT NULL, ip_address TEXT);
+CREATE TABLE IF NOT EXISTS public.settings (id TEXT PRIMARY KEY DEFAULT 'default_settings', data JSONB NOT NULL);
+ALTER TABLE public.members ENABLE ROW LEVEL SECURITY; CREATE POLICY "p1" ON public.members FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY; CREATE POLICY "p2" ON public.events FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY; CREATE POLICY "p3" ON public.registrations FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.attendance_sessions ENABLE ROW LEVEL SECURITY; CREATE POLICY "p4" ON public.attendance_sessions FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY; CREATE POLICY "p5" ON public.attendance_records FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY; CREATE POLICY "p6" ON public.projects FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY; CREATE POLICY "p7" ON public.activities FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY; CREATE POLICY "p8" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.officials ENABLE ROW LEVEL SECURITY; CREATE POLICY "p9" ON public.officials FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY; CREATE POLICY "p10" ON public.certificates FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY; CREATE POLICY "p11" ON public.gallery FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY; CREATE POLICY "p12" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY; CREATE POLICY "p13" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY; CREATE POLICY "p14" ON public.settings FOR ALL USING (true) WITH CHECK (true);`;
+                navigator.clipboard.writeText(schema);
+                addToast('Supabase SQL Schema copied to clipboard!', 'success');
+              }}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Copy SQL Schema
+            </button>
+          </div>
+          <p className="text-[11px] text-emerald-800 leading-relaxed">
+            To link your Supabase account: Paste the copied SQL schema into your <strong>Supabase Dashboard &gt; SQL Editor</strong>, then provide your <strong>SUPABASE_URL</strong> and <strong>SUPABASE_ANON_KEY</strong> in Settings or `.env`.
+          </p>
+        </div>
+      </div>
+
       {/* Database Backup & Disaster Recovery */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
         <h2 className="font-bold text-base text-slate-900 font-display">
@@ -490,15 +461,6 @@ export const AdminSettings: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Change Administrator Profile Picture Modal */}
-      <ChangeProfilePictureModal
-        isOpen={isChangeAvatarOpen}
-        onClose={() => setIsChangeAvatarOpen(false)}
-        userType="admin"
-        initialAvatar={currentUser?.avatar}
-        title="Change Administrator Profile Picture"
-      />
     </div>
   );
 };
