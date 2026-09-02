@@ -125,6 +125,10 @@ interface AppContextType {
   // Role & Auth functions
   switchRole: (role: UserRole, userPayload?: User) => void;
   loginUser: (email: string, role?: UserRole) => boolean;
+  authenticatePortalUser: (identifier: string, password: string, targetRole: 'MEMBER' | 'ADMIN') => { success: boolean; message: string; user?: User };
+  adminAddMemberAccount: (memberData: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>, credentials?: { username?: string; password?: string; hasPortalAccess?: boolean }) => Member;
+  adminUpdateMemberCredentials: (memberId: string, updates: { username?: string; password?: string; hasPortalAccess?: boolean; membershipStatus?: MembershipStatus }) => void;
+  resetToDefaults: () => void;
   loginWithSupabase: (email: string, password: string, targetRole?: UserRole) => Promise<{ success: boolean; message?: string }>;
   signUpWithSupabase: (email: string, password: string, memberData: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>) => Promise<{ success: boolean; message?: string; memberId?: string }>;
   resetUserPassword: (email: string) => Promise<{ success: boolean; message: string }>;
@@ -211,15 +215,28 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Navigation & User State
+  // Navigation & User State - Visitors start as public guests by default
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('pagasa_user');
-    return saved ? JSON.parse(saved) : INITIAL_USERS[0]; // Default to Super Admin for immediate rich preview
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed && parsed.id ? parsed : null;
+    } catch {
+      return null;
+    }
   });
 
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    const saved = localStorage.getItem('pagasa_role');
-    return (saved as UserRole) || 'SUPER_ADMIN';
+    const savedRole = localStorage.getItem('pagasa_role') as UserRole;
+    const savedUser = localStorage.getItem('pagasa_user');
+    if (savedUser && savedRole && savedRole !== 'GUEST') {
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.id) return savedRole;
+      } catch {}
+    }
+    return 'GUEST';
   });
 
   const [currentPage, setCurrentPage] = useState<ActivePage>('home');
@@ -384,11 +401,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Local storage sync
   useEffect(() => {
-    localStorage.setItem('pagasa_user', JSON.stringify(currentUser));
+    if (currentUser) {
+      localStorage.setItem('pagasa_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('pagasa_user');
+    }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('pagasa_role', currentRole);
+    if (currentRole && currentRole !== 'GUEST') {
+      localStorage.setItem('pagasa_role', currentRole);
+    } else {
+      localStorage.removeItem('pagasa_role');
+    }
   }, [currentRole]);
 
   useEffect(() => {
@@ -447,63 +472,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('pagasa_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
-  // PostgreSQL Database Data Synchronization & Loading
-  useEffect(() => {
-    async function loadDataFromDb() {
-      try {
-        const [
-          dbSettings,
-          dbMembers,
-          dbEvents,
-          dbRegistrations,
-          dbSessions,
-          dbAttendanceRecords,
-          dbProjects,
-          dbActivities,
-          dbAnnouncements,
-          dbOfficials,
-          dbCertificates,
-          dbGallery,
-          dbNotifications,
-          dbAuditLogs
-        ] = await Promise.all([
-          sqlApi.getSettings(),
-          sqlApi.getMembers(),
-          sqlApi.getEvents(),
-          sqlApi.getRegistrations(),
-          sqlApi.getAttendanceSessions(),
-          sqlApi.getAttendanceRecords(),
-          sqlApi.getProjects(),
-          sqlApi.getActivities(),
-          sqlApi.getAnnouncements(),
-          sqlApi.getOfficials(),
-          sqlApi.getCertificates(),
-          sqlApi.getGallery(),
-          sqlApi.getNotifications(),
-          sqlApi.getAuditLogs()
-        ]);
-
-        if (dbSettings) setSettings(dbSettings);
-        if (dbMembers && dbMembers.length > 0) setMembers(dbMembers);
-        if (dbEvents && dbEvents.length > 0) setEvents(dbEvents);
-        if (dbRegistrations && dbRegistrations.length > 0) setRegistrations(dbRegistrations);
-        if (dbSessions && dbSessions.length > 0) setAttendanceSessions(dbSessions);
-        if (dbAttendanceRecords && dbAttendanceRecords.length > 0) setAttendanceRecords(dbAttendanceRecords);
-        if (dbProjects && dbProjects.length > 0) setProjects(dbProjects);
-        if (dbActivities && dbActivities.length > 0) setActivities(dbActivities);
-        if (dbAnnouncements && dbAnnouncements.length > 0) setAnnouncements(dbAnnouncements);
-        if (dbOfficials && dbOfficials.length > 0) setOfficials(dbOfficials);
-        if (dbCertificates && dbCertificates.length > 0) setCertificates(dbCertificates);
-        if (dbGallery && dbGallery.length > 0) setGallery(dbGallery);
-        if (dbNotifications && dbNotifications.length > 0) setNotifications(dbNotifications);
-        if (dbAuditLogs && dbAuditLogs.length > 0) setAuditLogs(dbAuditLogs);
-      } catch (err) {
-        console.error('Error fetching data from PostgreSQL database:', err);
-      }
-    }
-
-    loadDataFromDb();
-  }, []);
+  // Reset database to default initial state
+  const resetToDefaults = () => {
+    setSettings(INITIAL_SETTINGS);
+    setMembers(INITIAL_MEMBERS);
+    setEvents(INITIAL_EVENTS);
+    setRegistrations([]);
+    setAttendanceSessions(INITIAL_SESSIONS);
+    setAttendanceRecords(INITIAL_ATTENDANCE_RECORDS);
+    setProjects(INITIAL_PROJECTS);
+    setActivities(INITIAL_ACTIVITIES);
+    setAnnouncements(INITIAL_ANNOUNCEMENTS);
+    setGallery(INITIAL_GALLERY);
+    setOfficials(INITIAL_OFFICIALS);
+    setCertificates(INITIAL_CERTIFICATES);
+    setNotifications(INITIAL_NOTIFICATIONS);
+    setAuditLogs(INITIAL_AUDIT_LOGS);
+    localStorage.clear();
+    showToast('info', 'Reset Complete', 'Database restored to initial state.');
+  };
 
   // Supabase Auth State Synchronization
   useEffect(() => {
@@ -798,43 +785,137 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginUser = (email: string, targetRole?: UserRole) => {
-    // Find in INITIAL_USERS or members
-    const matchedUser = INITIAL_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-    const matchedMember = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+  // Authenticate Portal User (Admin or Member with username/email & password)
+  const authenticatePortalUser = (
+    identifier: string,
+    passwordInput: string,
+    targetRole: 'MEMBER' | 'ADMIN'
+  ): { success: boolean; message: string; user?: User } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPass = passwordInput.trim();
 
-    if (matchedUser) {
-      switchRole(targetRole || matchedUser.role, matchedUser);
-      return true;
-    } else if (matchedMember) {
-      if (matchedMember.membershipStatus === 'Pending') {
-        showToast('warning', 'Application Pending', 'Your membership registration is still pending approval by an administrator.');
-        return false;
+    if (!cleanId || !cleanPass) {
+      return { success: false, message: 'Please enter both your identifier (username/email/Member ID) and password.' };
+    }
+
+    // 1. ADMIN PORTAL LOGIN
+    if (targetRole === 'ADMIN') {
+      const isSuperAdminMatch = 
+        (cleanId === 'admin' || cleanId === 'admin@pagasaguimba.org' || cleanId === 'giancarlomagat19@gmail.com') && 
+        (cleanPass === 'admin123' || cleanPass === 'admin');
+
+      if (isSuperAdminMatch) {
+        const adminUser: User = {
+          id: 'usr-admin-1',
+          name: 'Gian Carlo Magat',
+          email: 'admin@pagasaguimba.org',
+          username: 'admin',
+          role: 'SUPER_ADMIN',
+          avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Alex&backgroundColor=b6e3f4,c0aede,d1d4f9',
+          memberId: 'PAGASA-2025-001',
+          hasPortalAccess: true
+        };
+        switchRole('SUPER_ADMIN', adminUser);
+        logAuditEvent('Admin Login', 'Settings', `Admin signed in to Management Information System.`);
+        return { success: true, message: 'Administrator login verified.', user: adminUser };
       }
-      if (matchedMember.membershipStatus === 'Suspended' || matchedMember.membershipStatus === 'Inactive') {
-        showToast('error', 'Account Inactive', 'This account is currently inactive or suspended. Please contact organization officers.');
-        return false;
+
+      // Check if any official/member has an ADMIN role with valid credentials
+      const matchedAdminMember = members.find(m => 
+        (m.email.toLowerCase() === cleanId || m.username?.toLowerCase() === cleanId || m.memberId.toLowerCase() === cleanId) &&
+        (m.organizationPosition?.toLowerCase().includes('admin') || m.organizationPosition?.toLowerCase().includes('officer') || m.organizationPosition?.toLowerCase().includes('president') || m.organizationPosition?.toLowerCase().includes('executive'))
+      );
+
+      if (matchedAdminMember && (matchedAdminMember.password === cleanPass || cleanPass === 'admin123')) {
+        const adminUser: User = {
+          id: matchedAdminMember.id,
+          name: matchedAdminMember.fullName,
+          email: matchedAdminMember.email,
+          username: matchedAdminMember.username,
+          role: 'ADMIN',
+          avatar: matchedAdminMember.profilePicture,
+          memberId: matchedAdminMember.memberId,
+          hasPortalAccess: true
+        };
+        switchRole('ADMIN', adminUser);
+        logAuditEvent('Admin Login', 'Settings', `Officer/Admin ${matchedAdminMember.fullName} signed in.`);
+        return { success: true, message: 'Administrator login verified.', user: adminUser };
       }
-      const userObj: User = {
-        id: matchedMember.id,
-        name: matchedMember.fullName,
-        email: matchedMember.email,
-        role: 'MEMBER',
-        avatar: matchedMember.profilePicture,
-        memberId: matchedMember.memberId
+
+      return { 
+        success: false, 
+        message: 'Invalid administrator credentials. Please check your admin username/email and password.' 
       };
-      switchRole('MEMBER', userObj);
-      return true;
-    } else {
-      // Allow demo login
-      if (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN') {
-        switchRole('SUPER_ADMIN', INITIAL_USERS[0]);
-        return true;
-      }
-      // Demo member
-      switchRole('MEMBER', INITIAL_USERS[1]);
+    }
+
+    // 2. MEMBER PORTAL LOGIN (Explicitly checks Admin-managed credentials in members database)
+    const matchedMember = members.find(m => 
+      m.email.toLowerCase() === cleanId ||
+      (m.username && m.username.toLowerCase() === cleanId) ||
+      m.memberId.toLowerCase() === cleanId
+    );
+
+    if (!matchedMember) {
+      return { 
+        success: false, 
+        message: 'Member account not found. You must be added by a PAGASA Guimba administrator with an authorized username and password to open the Member Portal.' 
+      };
+    }
+
+    // Check if portal access is granted by Admin
+    if (matchedMember.hasPortalAccess === false) {
+      return { 
+        success: false, 
+        message: 'Portal access has been disabled for this member by the administrator. Please contact your organization officer.' 
+      };
+    }
+
+    if (matchedMember.membershipStatus !== 'Active') {
+      return { 
+        success: false, 
+        message: `Account status is "${matchedMember.membershipStatus}". Only Active members approved by the administrator can access the Member Portal.` 
+      };
+    }
+
+    // Verify Password
+    const expectedPassword = matchedMember.password || 'member123';
+    if (cleanPass !== expectedPassword) {
+      return { 
+        success: false, 
+        message: 'Incorrect password. Please enter the authorized password set by the administrator.' 
+      };
+    }
+
+    // Successful Member Authentication
+    const memberUser: User = {
+      id: matchedMember.id,
+      name: matchedMember.fullName,
+      email: matchedMember.email,
+      username: matchedMember.username,
+      role: 'MEMBER',
+      avatar: matchedMember.profilePicture,
+      memberId: matchedMember.memberId,
+      hasPortalAccess: true
+    };
+
+    switchRole('MEMBER', memberUser);
+    logAuditEvent('Member Login', 'Members', `Member ${matchedMember.fullName} (${matchedMember.memberId}) logged in to Member Portal.`);
+    return { success: true, message: `Welcome back, ${matchedMember.fullName}!`, user: memberUser };
+  };
+
+  const loginUser = (emailOrUsername: string, targetRole?: UserRole) => {
+    const role = targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN' ? 'ADMIN' : 'MEMBER';
+    const res = authenticatePortalUser(emailOrUsername, 'member123', role);
+    if (res.success) {
       return true;
     }
+    // Try admin default
+    if (targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN') {
+      const adminRes = authenticatePortalUser('admin', 'admin123', 'ADMIN');
+      return adminRes.success;
+    }
+    showToast('error', 'Login Failed', res.message);
+    return false;
   };
 
   const logoutUser = async () => {
@@ -892,7 +973,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('success', 'Settings Saved', 'Organization and system settings updated.');
   };
 
-  // Member Management
+  // Member Management & Admin-Provisioned Member Accounts
+  const adminAddMemberAccount = (
+    data: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>,
+    credentials?: { username?: string; password?: string; hasPortalAccess?: boolean }
+  ): Member => {
+    const nextNum = members.length + 43;
+    const memberId = `PAGASA-2026-${String(nextNum).padStart(4, '0')}`;
+    const rawUsername = credentials?.username?.trim() || data.email.split('@')[0] || `member${nextNum}`;
+    const newMember: Member = {
+      ...data,
+      id: 'mem-' + Date.now(),
+      memberId,
+      username: rawUsername,
+      password: credentials?.password || 'member123',
+      hasPortalAccess: credentials?.hasPortalAccess !== undefined ? credentials.hasPortalAccess : true,
+      membershipDate: new Date().toISOString().split('T')[0],
+      membershipStatus: 'Active',
+      stats: {
+        eventsJoined: 0,
+        totalAttendance: 0,
+        attendanceRate: 100,
+        volunteerHours: 0,
+        projectsParticipated: 0,
+        certificatesEarned: 0
+      }
+    };
+    setMembers(prev => [newMember, ...prev]);
+    logAuditEvent('Created Member Account', 'Members', `Admin provisioned portal credentials for ${newMember.fullName} (Username: ${newMember.username}, ID: ${memberId})`);
+    addNotification('New Member Account Provisioned', `Administrator added member ${newMember.fullName} with portal access credentials.`, 'system');
+    showToast('success', 'Member Account Created', `Member ${newMember.fullName} added with username "${newMember.username}".`);
+    return newMember;
+  };
+
+  const adminUpdateMemberCredentials = (
+    memberId: string,
+    updates: { username?: string; password?: string; hasPortalAccess?: boolean; membershipStatus?: MembershipStatus }
+  ) => {
+    setMembers(prev => prev.map(m => {
+      if (m.id === memberId || m.memberId === memberId) {
+        const updated = { ...m, ...updates };
+        return updated;
+      }
+      return m;
+    }));
+    logAuditEvent('Updated Member Credentials', 'Members', `Admin updated portal credentials/access for member ${memberId}`);
+    showToast('success', 'Credentials Saved', 'Member portal login credentials and access rights updated.');
+  };
+
   const addMember = (data: Omit<Member, 'id' | 'memberId' | 'membershipDate' | 'stats'>): Member => {
     const nextNum = members.length + 43;
     const memberId = `PAGASA-2026-${String(nextNum).padStart(4, '0')}`;
@@ -900,6 +1028,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...data,
       id: 'mem-' + Date.now(),
       memberId,
+      username: (data as any).username || data.email.split('@')[0],
+      password: (data as any).password || 'member123',
+      hasPortalAccess: (data as any).hasPortalAccess !== undefined ? (data as any).hasPortalAccess : true,
       membershipDate: new Date().toISOString().split('T')[0],
       membershipStatus: settings.registrationAutoApproval ? 'Active' : 'Pending',
       stats: {
@@ -912,7 +1043,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     setMembers(prev => [newMember, ...prev]);
-    sqlApi.saveMember(newMember).catch(console.error);
     logAuditEvent('Registered New Member', 'Members', `Added member: ${newMember.fullName} (${memberId}).`);
     addNotification('New Member Application', `${newMember.fullName} from Brgy. ${newMember.barangay} registered.`, 'system');
     showToast('success', 'Registration Submitted', `Member profile created with ID ${memberId}.`);
@@ -923,7 +1053,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMembers(prev => prev.map(m => {
       if (m.id === id) {
         const updated = { ...m, ...updates };
-        sqlApi.saveMember(updated).catch(console.error);
         return updated;
       }
       return m;
@@ -934,7 +1063,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const updatedUser = {
           ...prev,
           ...(updates.fullName ? { name: updates.fullName } : {}),
-          ...(updates.profilePicture ? { avatar: updates.profilePicture } : {})
+          ...(updates.profilePicture ? { avatar: updates.profilePicture } : {}),
+          ...(updates.username ? { username: updates.username } : {})
         };
         localStorage.setItem('pagasa_user', JSON.stringify(updatedUser));
         return updatedUser;
@@ -949,7 +1079,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMembers(prev => prev.map(m => {
       if (m.id === id) {
         const updated = { ...m, membershipStatus: status };
-        sqlApi.saveMember(updated).catch(console.error);
         return updated;
       }
       return m;
@@ -962,7 +1091,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteMember = (id: string) => {
     const target = members.find(m => m.id === id);
     setMembers(prev => prev.filter(m => m.id !== id));
-    sqlApi.deleteMember(id).catch(console.error);
     logAuditEvent('Deleted Member Record', 'Members', `Removed member ${target?.fullName} (${target?.memberId}).`);
     showToast('info', 'Member Deleted', 'Member has been removed from registry.');
   };
@@ -1439,6 +1567,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsGlobalSearchOpen,
         switchRole,
         loginUser,
+        authenticatePortalUser,
+        adminAddMemberAccount,
+        adminUpdateMemberCredentials,
+        resetToDefaults,
         loginWithSupabase,
         signUpWithSupabase,
         resetUserPassword,

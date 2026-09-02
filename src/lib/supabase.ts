@@ -215,3 +215,64 @@ export function supabaseOnAuthStateChange(
 
   return client.auth.onAuthStateChange(callback);
 }
+
+// =========================================================================
+// SUPABASE DATABASE TABLES OPERATIONS
+// =========================================================================
+
+/**
+ * Fetch all records from a Supabase table
+ */
+export async function supabaseFetchAll<T = any>(table: string): Promise<T[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  try {
+    const { data, error } = await client.from(table).select('*');
+    if (error) {
+      console.warn(`Supabase select from ${table} error:`, error.message);
+      return [];
+    }
+    return (data as T[]) || [];
+  } catch (err) {
+    console.warn(`Supabase fetch failed for ${table}:`, err);
+    return [];
+  }
+}
+
+/**
+ * Upsert a record in a Supabase table
+ */
+export async function supabaseUpsert<T = any>(table: string, record: any): Promise<T | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from(table).upsert(record).select().single();
+    if (error) {
+      console.warn(`Supabase upsert into ${table} error:`, error.message);
+      return null;
+    }
+    return data as T;
+  } catch (err) {
+    console.warn(`Supabase upsert failed for ${table}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Delete a record from a Supabase table by ID
+ */
+export async function supabaseDelete(table: string, id: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  try {
+    const { error } = await client.from(table).delete().eq('id', id);
+    if (error) {
+      console.warn(`Supabase delete from ${table} error:`, error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`Supabase delete failed for ${table}:`, err);
+    return false;
+  }
+}

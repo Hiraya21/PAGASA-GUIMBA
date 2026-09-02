@@ -27,6 +27,9 @@ export interface User {
   role: UserRole;
   avatar: string;
   memberId?: string;
+  username?: string;
+  password?: string;
+  hasPortalAccess?: boolean;
 }
 
 export interface Member {
@@ -47,6 +50,9 @@ export interface Member {
   membershipStatus: MembershipStatus;
   organizationPosition?: string;
   committee?: string;
+  username?: string;
+  password?: string;
+  hasPortalAccess?: boolean;
   emergencyContact: {
     name: string;
     relationship: string;

@@ -13,7 +13,7 @@ import {
   AuditLogItem,
   NotificationItem,
   User
-} from '../types';
+} from '../types/index.ts';
 
 export const GUIMBA_BARANGAYS = [
   'Ayos Lomboy',
@@ -101,25 +101,34 @@ export const INITIAL_USERS: User[] = [
     id: 'usr-admin-1',
     name: 'Gian Carlo Magat',
     email: 'admin@pagasaguimba.org',
+    username: 'admin',
+    password: 'admin123',
     role: 'SUPER_ADMIN',
     avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Alex&backgroundColor=b6e3f4,c0aede,d1d4f9',
-    memberId: 'PAGASA-2025-001'
+    memberId: 'PAGASA-2025-001',
+    hasPortalAccess: true
   },
   {
     id: 'usr-member-1',
     name: 'Juan Dela Cruz',
     email: 'juan.delacruz@gmail.com',
+    username: 'juan.delacruz',
+    password: 'member123',
     role: 'MEMBER',
     avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Jordan&backgroundColor=c0aede,b6e3f4,ffd5dc',
-    memberId: 'PAGASA-2026-0042'
+    memberId: 'PAGASA-2026-0042',
+    hasPortalAccess: true
   },
   {
     id: 'usr-member-2',
     name: 'Maria Santos',
     email: 'maria.santos@gmail.com',
+    username: 'maria.santos',
+    password: 'member123',
     role: 'MEMBER',
     avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Maya&backgroundColor=ffd5dc,ffdfbf,d1d4f9',
-    memberId: 'PAGASA-2026-0043'
+    memberId: 'PAGASA-2026-0043',
+    hasPortalAccess: true
   }
 ];
 
@@ -236,6 +245,9 @@ export const INITIAL_MEMBERS: Member[] = [
     memberId: 'PAGASA-2026-0042',
     fullName: 'Juan Dela Cruz',
     email: 'juan.delacruz@gmail.com',
+    username: 'juan.delacruz',
+    password: 'member123',
+    hasPortalAccess: true,
     contactNumber: '0917-889-1234',
     birthdate: '2004-05-14',
     age: 22,
@@ -268,6 +280,9 @@ export const INITIAL_MEMBERS: Member[] = [
     memberId: 'PAGASA-2026-0043',
     fullName: 'Maria Santos',
     email: 'maria.santos@gmail.com',
+    username: 'maria.santos',
+    password: 'member123',
+    hasPortalAccess: true,
     contactNumber: '0928-123-4567',
     birthdate: '2005-09-22',
     age: 20,
@@ -300,6 +315,9 @@ export const INITIAL_MEMBERS: Member[] = [
     memberId: 'PAGASA-2026-0044',
     fullName: 'Angelo Gabriel Pascual',
     email: 'angelo.pascual@gmail.com',
+    username: 'angelo.pascual',
+    password: 'member123',
+    hasPortalAccess: true,
     contactNumber: '0905-334-1122',
     birthdate: '2003-11-08',
     age: 22,

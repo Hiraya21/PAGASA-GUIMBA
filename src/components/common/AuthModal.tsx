@@ -12,12 +12,13 @@ export const AuthModal: React.FC = () => {
     setIsAuthModalOpen,
     authModalMode,
     setAuthModalMode,
-    loginWithSupabase,
+    authenticatePortalUser,
     signUpWithSupabase,
     resetUserPassword,
     loginWithGoogle,
     switchRole,
-    isSupabaseConfigured
+    isSupabaseConfigured,
+    showToast
   } = useApp();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,10 +68,13 @@ export const AuthModal: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const targetRole = authModalMode === 'admin-login' ? 'SUPER_ADMIN' : 'MEMBER';
-      const res = await loginWithSupabase(loginEmail, loginPassword, targetRole);
+      const targetRole = authModalMode === 'admin-login' ? 'ADMIN' : 'MEMBER';
+      const res = authenticatePortalUser(loginEmail, loginPassword, targetRole);
       if (res.success) {
         setIsAuthModalOpen(false);
+        showToast('success', 'Authentication Verified', res.message);
+      } else {
+        showToast('error', 'Sign In Failed', res.message);
       }
     } finally {
       setIsSubmitting(false);
@@ -332,18 +336,30 @@ export const AuthModal: React.FC = () => {
             {/* Login Form (Member or Admin) */}
             {(authModalMode === 'login' || authModalMode === 'admin-login') && (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {authModalMode === 'login' ? (
+                  <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-900 leading-relaxed">
+                    <p className="font-semibold mb-0.5">Admin-Managed Member Access</p>
+                    Enter the <strong>Username</strong> (or registered email / Member ID) and <strong>Password</strong> provided by your organization administrator.
+                  </div>
+                ) : (
+                  <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-xs text-indigo-900 leading-relaxed">
+                    <p className="font-semibold mb-0.5">Administrator Console Security</p>
+                    Enter your official administrator credentials to manage organization records.
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    {authModalMode === 'admin-login' ? 'Admin Official Email' : 'Member Registered Email'}
+                    {authModalMode === 'admin-login' ? 'Admin Username / Email' : 'Member Username, Email, or Member ID'}
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder={authModalMode === 'admin-login' ? 'admin@pagasaguimba.org' : 'juan.delacruz@gmail.com'}
+                      placeholder={authModalMode === 'admin-login' ? 'admin or admin@pagasaguimba.org' : 'e.g. juan.delacruz or PAGASA-2025-002'}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                     />
                   </div>
@@ -397,7 +413,7 @@ export const AuthModal: React.FC = () => {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <span>Sign In with Supabase Auth</span>
+                      <span>{authModalMode === 'admin-login' ? 'Sign In as Administrator' : 'Open Member Portal'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

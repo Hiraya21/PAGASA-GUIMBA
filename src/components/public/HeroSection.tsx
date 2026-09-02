@@ -231,28 +231,28 @@ export const HeroSection: React.FC = () => {
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight leading-[1.1]">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-[56px] font-display font-black tracking-tight leading-[1.12]">
                   <span className="text-white block">{currentSlide.titlePrefix}</span>
-                  <span className={`bg-gradient-to-r ${currentSlide.accentGradient} bg-clip-text text-transparent block`}>
+                  <span className={`bg-gradient-to-r ${currentSlide.accentGradient} bg-clip-text text-transparent block mt-1`}>
                     {currentSlide.titleHighlight}
                   </span>
                   {currentSlide.titleSuffix && (
-                    <span className="text-slate-100 block text-2xl sm:text-4xl mt-1">
+                    <span className="text-slate-200 block text-2xl sm:text-3xl md:text-4xl mt-1 font-extrabold">
                       {currentSlide.titleSuffix}
                     </span>
                   )}
                 </h1>
 
                 {/* Description */}
-                <p className="text-sm sm:text-base lg:text-lg text-slate-300 max-w-2xl leading-relaxed">
+                <p className="text-xs sm:text-sm md:text-base text-slate-300 max-w-xl leading-relaxed">
                   {currentSlide.description}
                 </p>
 
                 {/* Action Buttons */}
-                <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3.5">
+                <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
                   <button
                     onClick={() => handleAction(currentSlide.primaryBtnAction)}
-                    className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
                   >
                     <span>{currentSlide.primaryBtnText}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -260,17 +260,17 @@ export const HeroSection: React.FC = () => {
 
                   <button
                     onClick={() => handleAction(currentSlide.secondaryBtnAction)}
-                    className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold rounded-2xl text-sm shadow-lg shadow-amber-500/20 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-5 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-amber-500/20 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
                   >
                     <span>{currentSlide.secondaryBtnText}</span>
                   </button>
 
                   <button
                     onClick={() => setCurrentPage('projects')}
-                    className="px-5 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-2xl font-bold text-sm border border-white/15 backdrop-blur-md hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-3 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-xs sm:text-sm border border-white/15 backdrop-blur-md hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                   >
                     <Layers className="w-4 h-4 text-sky-400" />
-                    <span>View Projects</span>
+                    <span>Projects</span>
                   </button>
                 </div>
               </motion.div>
@@ -293,58 +293,69 @@ export const HeroSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Visual Feature Showcase & Metric Pills */}
-          <div className="lg:col-span-5 relative">
+          {/* Right Column: Visual Feature Showcase & Structured Metrics */}
+          <div className="lg:col-span-5 relative space-y-4">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide.id + '-card'}
-                initial={{ opacity: 0, scale: 0.96 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.4 }}
-                className="relative rounded-3xl overflow-hidden border border-slate-700/80 bg-slate-900 shadow-2xl"
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.35 }}
+                className="relative rounded-3xl overflow-hidden border border-slate-700/80 bg-slate-900 shadow-2xl group"
               >
-                <img
-                  src={currentSlide.bgImage}
-                  alt={currentSlide.titlePrefix}
-                  className="w-full h-72 sm:h-80 object-cover brightness-90 hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-left space-y-2">
-                  <div className="inline-block px-3 py-1 rounded-full bg-blue-600/90 text-white text-[11px] font-bold">
-                    {currentSlide.tagline}
+                {/* Showcase Image */}
+                <div className="relative aspect-[16/10] sm:aspect-[16/11] overflow-hidden">
+                  <img
+                    src={currentSlide.bgImage}
+                    alt={currentSlide.titlePrefix}
+                    className="w-full h-full object-cover brightness-[0.88] group-hover:scale-105 transition-transform duration-700"
+                  />
+                  {/* Subtle vignette gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  
+                  {/* Top-Left Category Tag */}
+                  <div className="absolute top-4 left-4 z-10">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 text-sky-300 text-xs font-bold border border-slate-700/80 backdrop-blur-md shadow-md">
+                      <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                      {currentSlide.tagline}
+                    </span>
                   </div>
-                  <h3 className="text-lg font-bold text-white leading-snug">
-                    {currentSlide.titlePrefix} {currentSlide.titleHighlight}
-                  </h3>
-                  <p className="text-xs text-slate-300 flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 text-sky-400" />
-                    Official Programs & Summits • Guimba, Nueva Ecija
-                  </p>
+
+                  {/* Bottom Caption Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-5 text-left space-y-1.5 z-10 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
+                    <h3 className="text-base sm:text-lg font-bold text-white leading-snug drop-shadow-sm">
+                      {currentSlide.titlePrefix} {currentSlide.titleHighlight}
+                    </h3>
+                    <p className="text-xs text-slate-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                      <span className="truncate">Official Programs & Summits • Guimba, Nueva Ecija</span>
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             </AnimatePresence>
 
-            {/* Floating Live Metric Pill 1 */}
-            <div className="absolute -top-4 -left-4 sm:-left-6 bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-3 hidden sm:flex z-20">
-              <div className="p-2 bg-blue-600/20 text-sky-400 rounded-xl">
-                <StatsIcon1 className="w-5 h-5" />
+            {/* Non-overlapping Metric Cards Grid (cleanly structured directly below image) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-900/90 backdrop-blur-md p-3.5 rounded-2xl border border-slate-800 shadow-lg flex items-center gap-3 text-left">
+                <div className="p-2.5 bg-sky-500/15 text-sky-400 rounded-xl flex-shrink-0 border border-sky-500/20">
+                  <StatsIcon1 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-white truncate">{currentSlide.statsPill1.label}</p>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">{currentSlide.statsPill1.sub}</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-white">{currentSlide.statsPill1.label}</p>
-                <p className="text-[10px] text-slate-400">{currentSlide.statsPill1.sub}</p>
-              </div>
-            </div>
 
-            {/* Floating Live Metric Pill 2 */}
-            <div className="absolute -bottom-4 -right-4 sm:-right-6 bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-3 hidden sm:flex z-20">
-              <div className="p-2 bg-emerald-600/20 text-emerald-400 rounded-xl">
-                <StatsIcon2 className="w-5 h-5" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-white">{currentSlide.statsPill2.label}</p>
-                <p className="text-[10px] text-slate-400">{currentSlide.statsPill2.sub}</p>
+              <div className="bg-slate-900/90 backdrop-blur-md p-3.5 rounded-2xl border border-slate-800 shadow-lg flex items-center gap-3 text-left">
+                <div className="p-2.5 bg-emerald-500/15 text-emerald-400 rounded-xl flex-shrink-0 border border-emerald-500/20">
+                  <StatsIcon2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-white truncate">{currentSlide.statsPill2.label}</p>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">{currentSlide.statsPill2.sub}</p>
+                </div>
               </div>
             </div>
           </div>

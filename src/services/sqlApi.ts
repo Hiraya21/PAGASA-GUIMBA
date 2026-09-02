@@ -14,7 +14,7 @@ import {
   OrganizationSettings,
   NotificationItem,
   AuditLogItem
-} from '../types';
+} from '../types/index.ts';
 
 export const sqlApi = {
   // Settings
