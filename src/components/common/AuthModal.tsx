@@ -342,9 +342,26 @@ export const AuthModal: React.FC = () => {
                     Enter the <strong>Username</strong> (or registered email / Member ID) and <strong>Password</strong> provided by your organization administrator.
                   </div>
                 ) : (
-                  <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-xs text-indigo-900 leading-relaxed">
-                    <p className="font-semibold mb-0.5">Administrator Console Security</p>
-                    Enter your official administrator credentials to manage organization records.
+                  <div className="p-3 bg-indigo-50/90 border border-indigo-200 rounded-2xl text-xs text-indigo-950 leading-relaxed space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold flex items-center gap-1.5 text-indigo-900">
+                        <Shield className="w-4 h-4 text-indigo-600" />
+                        Administrator Portal Credentials
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginEmail('PAGASA_ADMIN');
+                          setLoginPassword('TayoAngPagasa');
+                        }}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-white px-2 py-0.5 rounded-md border border-indigo-200 cursor-pointer shadow-xs"
+                      >
+                        Auto-fill Credentials
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-indigo-800">
+                      Official Admin Access: <span className="font-mono font-bold bg-indigo-100/80 px-1.5 py-0.5 rounded text-indigo-900">PAGASA_ADMIN</span> &nbsp;•&nbsp; Password: <span className="font-mono font-bold bg-indigo-100/80 px-1.5 py-0.5 rounded text-indigo-900">TayoAngPagasa</span>
+                    </p>
                   </div>
                 )}
 
@@ -359,7 +376,7 @@ export const AuthModal: React.FC = () => {
                       required
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder={authModalMode === 'admin-login' ? 'admin or admin@pagasaguimba.org' : 'e.g. juan.delacruz or PAGASA-2025-002'}
+                      placeholder={authModalMode === 'admin-login' ? 'PAGASA_ADMIN (or admin@pagasaguimba.org)' : 'e.g. juan.delacruz or PAGASA-2025-002'}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                     />
                   </div>
@@ -376,7 +393,7 @@ export const AuthModal: React.FC = () => {
                       required
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="••••••••••••"
+                      placeholder={authModalMode === 'admin-login' ? 'TayoAngPagasa' : '••••••••••••'}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                     />
                   </div>

@@ -801,23 +801,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. ADMIN PORTAL LOGIN
     if (targetRole === 'ADMIN') {
       const isSuperAdminMatch = 
-        (cleanId === 'admin' || cleanId === 'admin@pagasaguimba.org' || cleanId === 'giancarlomagat19@gmail.com') && 
-        (cleanPass === 'admin123' || cleanPass === 'admin');
+        (cleanId === 'pagasa_admin' || cleanId === 'pagasa-admin' || cleanId === 'admin' || cleanId === 'admin@pagasaguimba.org' || cleanId === 'giancarlomagat19@gmail.com') && 
+        (cleanPass === 'TayoAngPagasa' || cleanPass === 'tayoangpagasa' || cleanPass === 'admin123' || cleanPass === 'admin');
 
       if (isSuperAdminMatch) {
         const adminUser: User = {
           id: 'usr-admin-1',
           name: 'Gian Carlo Magat',
           email: 'admin@pagasaguimba.org',
-          username: 'admin',
+          username: 'PAGASA_ADMIN',
+          password: 'TayoAngPagasa',
           role: 'SUPER_ADMIN',
           avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Alex&backgroundColor=b6e3f4,c0aede,d1d4f9',
           memberId: 'PAGASA-2025-001',
           hasPortalAccess: true
         };
         switchRole('SUPER_ADMIN', adminUser);
-        logAuditEvent('Admin Login', 'Settings', `Admin signed in to Management Information System.`);
-        return { success: true, message: 'Administrator login verified.', user: adminUser };
+        logAuditEvent('Admin Login', 'Settings', `Admin (${cleanId}) signed in with verified credentials.`);
+        return { success: true, message: 'Administrator access granted. Welcome, PAGASA Admin!', user: adminUser };
       }
 
       // Check if any official/member has an ADMIN role with valid credentials
@@ -826,12 +827,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (m.organizationPosition?.toLowerCase().includes('admin') || m.organizationPosition?.toLowerCase().includes('officer') || m.organizationPosition?.toLowerCase().includes('president') || m.organizationPosition?.toLowerCase().includes('executive'))
       );
 
-      if (matchedAdminMember && (matchedAdminMember.password === cleanPass || cleanPass === 'admin123')) {
+      if (matchedAdminMember && (matchedAdminMember.password === cleanPass || cleanPass === 'TayoAngPagasa' || cleanPass === 'admin123')) {
         const adminUser: User = {
           id: matchedAdminMember.id,
           name: matchedAdminMember.fullName,
           email: matchedAdminMember.email,
-          username: matchedAdminMember.username,
+          username: matchedAdminMember.username || 'PAGASA_ADMIN',
           role: 'ADMIN',
           avatar: matchedAdminMember.profilePicture,
           memberId: matchedAdminMember.memberId,
@@ -844,7 +845,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return { 
         success: false, 
-        message: 'Invalid administrator credentials. Please check your admin username/email and password.' 
+        message: 'Invalid administrator credentials. Please check your username (PAGASA_ADMIN) and password.' 
       };
     }
 
@@ -1503,23 +1504,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Certificates
-  const issueCertificate = (data: Omit<CertificateItem, 'id' | 'certificateNumber' | 'qrVerificationUrl'>): CertificateItem => {
-    const certNum = `CERT-PAGASA-2026-${String(certificates.length + 1).padStart(4, '0')}`;
+  const issueCertificate = (data: any): CertificateItem => {
+    const certCount = certificates.length + 1;
+    const certNum = data.certificateNumber || `CERT-PAGASA-2026-${String(certCount).padStart(4, '0')}`;
+    const memberName = data.memberName || data.recipientName || 'Authorized Youth Member';
+    const eventTitle = data.eventOrActivityTitle || data.eventTitle || 'PAGASA Guimba Official Youth Assembly';
+    
     const newCert: CertificateItem = {
-      ...data,
-      id: 'cert-' + Date.now(),
+      id: 'cert-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       certificateNumber: certNum,
+      memberId: data.memberId || 'PAGASA-2026-0042',
+      memberName,
+      eventOrActivityTitle: eventTitle,
+      certificateType: data.certificateType || 'Participation',
+      issueDate: data.issueDate || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      organization: data.organization || 'PAGASA Guimba Youth Organization',
+      signatories: data.signatories && data.signatories.length > 0 ? data.signatories.map((s: any) => ({
+        name: s.name,
+        position: s.position || s.title || 'Official Signatory'
+      })) : [
+        { name: 'Gian Carlo Magat', position: 'President, PAGASA Guimba' },
+        { name: 'Alyssa Nicole Valenzuela', position: 'Vice President, PAGASA Guimba' }
+      ],
+      description: data.description || `In recognition of active and exemplary participation in ${eventTitle} organized by PAGASA Guimba Youth Organization.`,
       qrVerificationUrl: `https://pagasaguimba.org/verify/${certNum}`
     };
+    
     setCertificates(prev => [newCert, ...prev]);
     sqlApi.saveCertificate(newCert).catch(console.error);
     
     // Update member certificate count
     setMembers(prev => prev.map(m => {
-      if (m.memberId === data.memberId) {
+      if (m.memberId === newCert.memberId || m.fullName === memberName) {
+        const currentEarned = m.stats?.certificatesEarned || 0;
         const updated = {
           ...m,
-          stats: { ...m.stats, certificatesEarned: m.stats.certificatesEarned + 1 }
+          stats: { ...m.stats, certificatesEarned: currentEarned + 1 }
         };
         sqlApi.saveMember(updated).catch(console.error);
         return updated;
@@ -1527,9 +1547,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return m;
     }));
 
-    logAuditEvent('Issued Official Certificate', 'Certificates', `Issued certificate ${certNum} to ${data.memberName} for "${data.eventOrActivityTitle}".`);
-    addNotification('Certificate Generated', `Your certificate for "${data.eventOrActivityTitle}" is ready to view & download.`, 'certificate');
-    showToast('success', 'Certificate Issued', `Certificate ${certNum} generated for ${data.memberName}.`);
+    logAuditEvent('Issued Official Certificate', 'Certificates', `Issued certificate ${certNum} to ${memberName} for "${eventTitle}".`);
+    addNotification('Certificate Generated', `Your certificate for "${eventTitle}" is ready to view & download.`, 'certificate');
+    showToast('success', 'Certificate Issued', `Certificate ${certNum} generated for ${memberName}.`);
     return newCert;
   };
 
